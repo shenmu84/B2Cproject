@@ -1,0 +1,9 @@
+[test]
+	py = .
+[safe]
+	directory = *
+[credential]
+	helper = store
+[user]
+	name = shenmu84
+	email = shenmu84@gmail.com
