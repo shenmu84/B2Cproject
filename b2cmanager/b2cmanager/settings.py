@@ -14,7 +14,9 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+#__file__是setting.py的绝对路径
+#dirname()文件的目录
+#BASE_DIR 工程的路径
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
@@ -23,9 +25,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'luv!p(4^wp6ab%=g2ywpviu)^xwqr%m!snbox&jmp!*44p6zda'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+#开发时看更多信息时看的，发布给用户前要关闭
 DEBUG = True
-
-ALLOWED_HOSTS = []
+#
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,7 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'goods'
+    'goods.apps.GoodsConfig',
 ]
 
 MIDDLEWARE = [
@@ -120,3 +123,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+#告知系统图片在哪里
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR,'static')
+]
