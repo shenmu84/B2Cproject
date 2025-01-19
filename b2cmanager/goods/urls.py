@@ -1,4 +1,4 @@
-"""B2C URL Configuration
+"""b2cmanager URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/2.2/topics/http/urls/
@@ -14,8 +14,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
-
+from django.urls import path, include
+#加载试图函数类
+#from子项目.类 import 函数
+from goods.views import index
 urlpatterns = [
     path('admin/', admin.site.urls),
+    #子应用的url访问工程的总url
+    #第一个参数是子应用路由+项目的路由
+    path('',include('goods.urls')),
 ]

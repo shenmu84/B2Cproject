@@ -15,7 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-
+#加载试图函数类
+#from子项目.类 import 函数
+from goods.views import index
 urlpatterns = [
     path('admin/', admin.site.urls),
+    #path(路由，视图函数名字)
+    path('index/',index),
 ]
