@@ -13,5 +13,5 @@ app = Celery('celery_tasks')
 # 应具有 `CELERY_` 前缀。
 app.config_from_object('django.conf:settings',namespace='CELERY' )
 # 从所有已注册的 Django 应用加载任务模块。
-app.autodiscover_tasks(['celery_tasks.sms'])
+app.autodiscover_tasks(['celery_tasks.sms','celery_tasks.email'])
 

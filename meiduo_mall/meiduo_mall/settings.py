@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.users',
-    'apps.verifications'
+    'apps.verifications',
+    'apps.oauth'
 
 ]
 #替换系统的USER模型
@@ -54,10 +55,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://www.meiduo.site:8080',
 ]
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
-CORS_ALLOW_METHODS = [
-    "GET",
-    "POST"
-]
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -220,3 +218,19 @@ LOGGING = {
 
     },
 }
+#QQ登录参数
+QQ_CLIENT_ID=''
+QQ_CLIENT_SECRET=''
+QQ_REDIRECT_URI=''
+#邮箱配置
+#  让django的哪个类来发送邮件
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# 邮件服务器的主机和端口号
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 25
+
+# 使用我的 163服务器 和 授权码
+#发送邮件的邮箱
+EMAIL_HOST_USER = 'shenmu_ovo@163.com'
+#在邮箱中设置的客户端授权密码
+EMAIL_HOST_PASSWORD = 'HWciBtuMM9EGBtV5'
