@@ -28,7 +28,7 @@ STATICFILES_DIRS = [
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['www.meiduo.site','127.0.0.1']
+ALLOWED_HOSTS = ['www.meiduo.site','127.0.0.1','192.168.55.83']
 
 # Application definition
 
@@ -53,6 +53,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8080',
     'http://localhost:8080',
     'http://www.meiduo.site:8080',
+    'http://192.168.55.83:8080',
 ]
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
 
@@ -219,9 +220,9 @@ LOGGING = {
     },
 }
 #QQ登录参数
-QQ_CLIENT_ID=''
-QQ_CLIENT_SECRET=''
-QQ_REDIRECT_URI=''
+GITEE_CLIENT_ID='b567b3ee312c21b489c265407cd918b742a301dd87040849296b73c38cb74647'
+GITEE_CLIENT_SECRET='6d579391a77cb71f2c3b850ebdfbc4a415729fd1a30e4ed130bc3ad3fe203d72'
+GITEE_REDIRECT_URI='http://localhost:8080/oauth_callback.html'
 #邮箱配置
 #  让django的哪个类来发送邮件
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
