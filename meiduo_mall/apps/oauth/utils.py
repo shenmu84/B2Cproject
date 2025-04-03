@@ -1,4 +1,4 @@
-from django.conf import settings
+
 from urllib.parse import urlencode, parse_qs
 import json
 import requests

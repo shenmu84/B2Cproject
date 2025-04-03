@@ -27,6 +27,7 @@ register_converter(UsernameConverter,'username')
 urlpatterns = [
     path('',include('apps.users.urls')),
     path('',include('apps.verifications.urls')),
+    path('',include('apps.areas.urls')),
     path('',include('apps.oauth.urls')),
     path('admin/', admin.site.urls),
 ]

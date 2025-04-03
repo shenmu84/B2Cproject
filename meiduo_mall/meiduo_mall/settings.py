@@ -42,7 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'apps.users',
     'apps.verifications',
-    'apps.oauth'
+    'apps.oauth',
+    'apps.areas',
+    'apps.goods'
 
 ]
 #替换系统的USER模型

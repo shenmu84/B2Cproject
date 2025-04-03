@@ -4,6 +4,7 @@ from django.views import View
 from django_redis import get_redis_connection
 from random import randint
 from libs.yuntongxun.sms import CCP
+
 class SmsCodeView(View):
    def get(self, request, mobile):
       # 1. 获取请求参数
@@ -32,12 +33,13 @@ class SmsCodeView(View):
       pipline=redis_cli.pipeline()
 
       pipline.setex(mobile, 300, sms_code)
+      pipline.setex('sms_code_%s' % mobile,300,sms_code)
       pipline.setex('send_flag_%s'%mobile,60,1)
       pipline.execute()
       # 6. 发送短信验证码
-      #CCP().send_template_sms(str(mobile), [sms_code, 5], 1)
       from celery_tasks.sms.tasks import celery_send_sms_code
       celery_send_sms_code.delay(mobile,sms_code)
+      #我怎么指导短信验证码是否正确 TODO
       # 7. 返回响应
       return JsonResponse({'code': 0, 'errmsg': 'ok'})
 
