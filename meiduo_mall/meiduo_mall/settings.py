@@ -28,7 +28,7 @@ STATICFILES_DIRS = [
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['www.meiduo.site','127.0.0.1','192.168.55.83']
+ALLOWED_HOSTS = ['www.meiduo.site','127.0.0.1','192.168.106.82']
 
 # Application definition
 
@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'apps.verifications',
     'apps.oauth',
     'apps.areas',
-    'apps.goods'
+    'apps.goods',
+    'apps.contents',
+    'haystack'
 
 ]
 #替换系统的USER模型
@@ -55,7 +57,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8080',
     'http://localhost:8080',
     'http://www.meiduo.site:8080',
-    'http://192.168.55.83:8080',
+    'http://192.168.106.82:8080',
 ]
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
 
@@ -82,7 +84,7 @@ ROOT_URLCONF = 'meiduo_mall.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR,'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -237,3 +239,16 @@ EMAIL_PORT = 25
 EMAIL_HOST_USER = 'shenmu_ovo@163.com'
 #在邮箱中设置的客户端授权密码
 EMAIL_HOST_PASSWORD = 'HWciBtuMM9EGBtV5'
+
+DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.MyStorage'
+FDFS_BASE_URL = 'http://image.meiduo.site:8888/'
+
+#haystack
+#需要添加一个设置来指示您的站点配置文件将存放在何处以及使用哪个后端
+HAYSTACK_CONNECTIONS = {
+    'default': {
+        'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
+        'URL': 'http://192.168.106.82:9200/',
+        'INDEX_NAME': 'meiduo',
+    },
+}

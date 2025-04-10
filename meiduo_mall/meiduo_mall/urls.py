@@ -30,4 +30,5 @@ urlpatterns = [
     path('',include('apps.areas.urls')),
     path('',include('apps.oauth.urls')),
     path('admin/', admin.site.urls),
+    path('',include('apps.goods.urls')),
 ]
