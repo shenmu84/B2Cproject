@@ -1,0 +1,57 @@
+version: "3.3"
+services:
+  django:
+    image: python:3.9
+    container_name: django_app
+    working_dir: /app
+    volumes:
+      - ./meiduo_mall:/app
+    command: bash -c "pip install -r requirements.txt && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - tracker
+      - storage
+
+  celery:
+    image: python:3.9
+    container_name: celery_worker
+    working_dir: /app
+    volumes:
+      - ./meiduo_mall:/app
+    command: bash -c "pip install -r requirements.txt && celery -A meiduo_mall worker -l info"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:latest
+    container_name: redis
+
+  tracker:
+    image: delron/fastdfs
+    container_name: tracker
+    network_mode: "host"
+    volumes:
+      - /var/fdfs/tracker:/var/fdfs
+    command: tracker
+
+  storage:
+    image: delron/fastdfs
+    container_name: storage
+    network_mode: "host"
+    volumes:
+      - /var/fdfs/storage:/var/fdfs
+    environment:
+      - TRACKER_SERVER=192.168.106.28:22122
+    command: storage
+
+  frontend:
+    image: python:3.9
+    container_name: frontend_http
+    working_dir: /front
+    volumes:
+      - ./front_end_pc:/front
+    command: python3 -m http.server 8080
+    ports:
+      - "8080:8080"
