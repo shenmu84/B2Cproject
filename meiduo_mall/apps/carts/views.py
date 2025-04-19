@@ -15,6 +15,7 @@ from apps.goods.models import SKU
 
 
 '''
+from utils.carts import *
 class CartsView(View):
     def post(self,request):
         data=json.loads(request.body.decode())
@@ -40,13 +41,7 @@ class CartsView(View):
             #     4.4 返回响应
             return JsonResponse({'code': 0, 'errmsg': 'ok'})
         else:
-            cookie_carts = request.COOKIES.get('carts')
-            if cookie_carts:
-                # 对加密的数据解密
-                carts = pickle.loads(base64.b64decode(cookie_carts))
-            else:
-                #5.1 先有cookie字典
-                carts = {}
+            carts=getCartFromCook(request)
             # 判断新增的商品 有没有在购物车里
             if sku_id in carts:
                 # 购物车中 已经有该商品id
@@ -58,36 +53,24 @@ class CartsView(View):
                 'selected': True
             }
             response=JsonResponse({'code': 0, 'errmsg': 'ok'})
-            response.set_cookie('carts', base64.b64encode(pickle.dumps(carts)).decode(), max_age=3600)
-            return response
+            return setCartToCookie(response, carts)
     def get(self,request):
         user=request.user
         if user.is_authenticated:
             redis_cli=get_redis_connection("carts")
-            # hgetall把Redis 的 Hash 类型数据读取出来，并转为 Python 能用的格式。
             sku_id_count=redis_cli.hgetall("carts_%s" % user.id)
             selected_ids=redis_cli.smembers("selected_%s" % user.id)
-            #将redis的数据格式转换成cookie的字典
             carts={}
-            #redis是byte数据，需转换
             for sku_id,count in sku_id_count.items():
                 carts[int(sku_id)] = {
                     'count': int(count),
                     'selected': sku_id in selected_ids
                 }
         else:
-            cookie=request.COOKIES.get('carts')
-            if cookie is not None:
-                carts=pickle.loads(base64.b64decode(cookie))
-            else:
-                carts={}
+            carts=getCartFromCook(request)
         #根据已经有的信息，创建商品信息，用列表传递除去
         sku_ids = carts.keys()
-        # [1,2,3,4,5]
-        # 可以遍历查询
-        # 也可以用 in
         skus = SKU.objects.filter(id__in=sku_ids)
-
         sku_list = []
         for sku in skus:
             # 5 将对象数据转换为字典数据
@@ -139,16 +122,7 @@ class CartsView(View):
                 return JsonResponse({'code':0,'errmsg':'ok','cart_sku':{'count':count,'selected':selected}})
 
             else:
-                # 5.未登录用户更新cookie
-                #     5.1 先读取购物车数据
-                cookie_cart=request.COOKIES.get('carts')
-                #         判断有没有。
-                if cookie_cart is not None:
-                    #         如果有则解密数据
-                    carts=pickle.loads(base64.b64decode(cookie_cart))
-                else:
-                    #         如果没有则初始化一个空字典
-                    carts={}
+                carts=getCartFromCook(request)
                 #     5.2 更新数据
                 # {sku_id: {count:xxx,selected:xxx}}
                 if sku_id in carts:
@@ -156,16 +130,10 @@ class CartsView(View):
                         'count':count,
                         'selected':selected
                     }
-                #     5.3 重新最字典进行编码和base64加密
-                new_carts=base64.b64encode(pickle.dumps(carts))
-                #     5.4 设置cookie
                 response = JsonResponse({'code':0,'errmsg':'ok','cart_sku':{'count':count,'selected':selected}})
-                response.set_cookie('carts',new_carts.decode(),max_age=14*24*3600)
-                #     5.5 返回响应
-                return response
+                return setCartToCookie(response, carts)
     def delete(self,request):
         #获取数据
-        content=request.body
         decode=request.body.decode()
         data=json.loads(decode)
         sku_id=data.get('sku_id')
@@ -184,22 +152,9 @@ class CartsView(View):
             pipeline.execute()
             return  JsonResponse({'code': 0, 'errmsg': 'ok'})
         else:
-            # 5.未登录用户操作cookie
-            #     5.1 读取cookie中的购物车数据
-            cookie_cart = request.COOKIES.get('carts')
-            #     判断数据是否存在
-            if cookie_cart is not None:
-                #     存在则解码
-                carts = pickle.loads(base64.b64decode(cookie_cart))
-                #     5.2 删除数据 {}
+            carts=getCartFromCook(request)
+            if carts:
                 del carts[sku_id]
-            else:
-                #     不存在则初始化字典
-                carts = {}
-            #     5.3 我们需要对字典数据进行编码和base64的处理
-            new_carts = base64.b64encode(pickle.dumps(carts))
-            #     5.4 设置cookie
             response = JsonResponse({'code': 0, 'errmsg': 'ok'})
-            response.set_cookie('carts', new_carts.decode(), max_age=14 * 24 * 3600)
-            #     5.5 返回响应
-            return response
+
+            return setCartToCookie(response,carts)

@@ -1,9 +1,8 @@
 import re
 from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render
+
 from django.views import View
 from django_redis import get_redis_connection
-
 from apps.users.models import User
 import json
 from celery_tasks.email.tasks import celery_send_email
@@ -78,6 +77,9 @@ class LoginView(View):
         response= JsonResponse({'code':0,'errmsg':'ok'})
         #为了让前端获取cookie中的用户信息
         response.set_cookie('username',username)
+        #登录后合并cookie的购物车和redis里的
+        from utils.carts import merge_cookie_to_redis
+        response = merge_cookie_to_redis(request,response)
         return response
 
 #实现退出功能
