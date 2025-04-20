@@ -4,5 +4,5 @@ from apps.carts.views import *
 from utils import views
 
 urlpatterns = [
-    path('carts/', CartsView.as_view(), name='cart_list'),
+    path('carts/', CartsView.as_view()),
     ]

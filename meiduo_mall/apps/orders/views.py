@@ -24,7 +24,7 @@ class OrderSettlementView(View):
                 'mobile': address.mobile
             })
         redis_cli=get_redis_connection('carts')
-        selected=pipeline.smembers()
+        pipeline=redis_cli.pipeline()
         pipeline.hgetall('carts_%s' % user.id)
         #     3.3 set         [1,2]
         pipeline.smembers('selected_%s' % user.id)
@@ -57,4 +57,4 @@ class OrderSettlementView(View):
             'freight': freight  # 运费
         }
 
-        return JsonResponse({'code': 0, 'errmsg': 'ok', 'content': content})
+        return JsonResponse({'code': 0, 'errmsg': 'ok', 'context': content})
