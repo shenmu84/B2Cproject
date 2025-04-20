@@ -1,9 +1,15 @@
+import json
+
+from django.db import transaction
+from django.utils import timezone
+from datetime import datetime
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
 from django_redis import get_redis_connection
-from redis.asyncio.utils import pipeline
 
+from apps.goods.models import SKU
 from apps.users.models import Address
 
 
@@ -56,5 +62,81 @@ class OrderSettlementView(View):
             'addresses': addresses_list,
             'freight': freight  # 运费
         }
-
         return JsonResponse({'code': 0, 'errmsg': 'ok', 'context': content})
+from apps.orders.models import OrderInfo,OrderGoods
+class OrderCommitView(LoginRequiredMixin, View):
+    def post(self,request):
+        #获取数据
+        user=request.user
+        data=json.loads(request.body.decode())
+        address_id=data.get('address_id')
+        pay_method=data.get('pay_method')
+        #验证数据
+        if not all([address_id,pay_method]):
+            return JsonResponse({'code':400,'errmsg':"参数不全"})
+        try:
+            address=Address.objects.get(id=address_id)
+        except Address.DoesNotExist:
+            return JsonResponse({'code':400,'errmsg':"参数不正确"})
+        if pay_method not in [OrderInfo.PAY_METHODS_ENUM['CASH'],OrderInfo.PAY_METHODS_ENUM['ALIPAY']]:
+            return JsonResponse({'code':400,'errmsg':'參數不正確'})
+
+        #处理数据
+        order_id=timezone.localtime().strftime('%Y%m%d%H%M%S%f')+'%09d'%user.id
+        if pay_method == OrderInfo.PAY_METHODS_ENUM['CASH']:
+            status=OrderInfo.ORDER_STATUS_ENUM['UNSEND']
+        else:
+            status=OrderInfo.ORDER_STATUS_ENUM['UNPAID']
+            # 总数量，总金额， = 0
+        total_count = 0
+        from decimal import Decimal
+        total_amount = Decimal('0')  # 总金额
+        # 运费
+        freight = Decimal('10.00')
+        with transaction.atomic():
+            point= transaction.atomic()
+            try:
+                orderinfo = OrderInfo.objects.create(
+                    order_id=order_id,
+                    user=user,
+                    address=address,
+                    total_count=total_count,
+                    total_amount=total_amount,
+                    freight=freight,
+                    pay_method=pay_method,
+                    status=status
+                )
+            except:
+                return JsonResponse({'code':400,'errmsg':'数据创建失败'})
+            redis_cli=get_redis_connection('carts')
+            pipeline=redis_cli.pipeline()
+            pipeline.hgetall('carts_%s' % user.id)
+            pipeline.smembers('selected_%s' % user.id)
+            result = pipeline.execute()
+            skuID_counts = result[0]  # {sku_id:count,sku_id:count}
+            selected = result[1]
+            carts={}
+            for id in selected:
+                carts[int(id)] = int(skuID_counts[id])
+            for id,count in carts.items():
+                sku=SKU.objects.get(pk=id)
+                if sku.stock < count:
+                    transaction.savepoint_rollback(user.id)
+                    return JsonResponse({'code':400,'errmsg':'库存不足'})
+                #库存减少，销量增加
+                sku.stock  -=count
+                sku.sales  +=count
+                sku.save()
+                #订单总数量和总金额
+                orderinfo.total_count += count
+                orderinfo.total_amount += (count*sku.price)
+                OrderGoods.objects.create(
+                    order=orderinfo,
+                    sku=sku,
+                    count=count,
+                    price=sku.price
+                )
+            orderinfo.save()
+            transaction.savepoint_commit(point)
+        return JsonResponse({'code':0,'errmsg':'ok','order_id':order_id})
+

@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     'apps.contents',
     'haystack',
     'django_crontab',
-    'apps.carts'
+    'apps.carts',
+    'apps.orders'
 
 ]
 #替换系统的USER模型
@@ -254,6 +255,7 @@ EMAIL_PORT = 25
 EMAIL_HOST_USER = 'shenmu_ovo@163.com'
 #在邮箱中设置的客户端授权密码
 EMAIL_HOST_PASSWORD = 'HWciBtuMM9EGBtV5'
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.MyStorage'
 FDFS_BASE_URL = 'http://image.meiduo.site:8888/'
