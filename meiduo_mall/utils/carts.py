@@ -44,3 +44,12 @@ def merge_cookie_to_redis(request,response):
         pipeline.execute()
         response.delete_cookie('carts')
     return response
+
+def getSkucount(user):
+    redis_cli = get_redis_connection('carts')
+    pipeline = redis_cli.pipeline()
+    pipeline.hgetall('carts_%s' % user.id)
+    #     3.3 set         [1,2]
+    pipeline.smembers('selected_%s' % user.id)
+    # 我们接收 管道统一执行之后，返回的结果
+    return pipeline.execute()

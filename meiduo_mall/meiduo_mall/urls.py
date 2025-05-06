@@ -14,10 +14,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.http import HttpResponse
 from django.urls import path, include
 
-from apps import verifications
 from utils.converters import UsernameConverter
 from django.urls import register_converter
 register_converter(UsernameConverter,'username')
@@ -25,12 +23,13 @@ register_converter(UsernameConverter,'username')
 
 
 urlpatterns = [
-    path('',include('apps.users.urls')),
-    path('',include('apps.verifications.urls')),
-    path('',include('apps.areas.urls')),
-    path('',include('apps.oauth.urls')),
+    path('', include('apps.mall.users.urls')),
+    path('', include('apps.mall.verifications.urls')),
+    path('', include('apps.mall.areas.urls')),
+    path('', include('apps.mall.oauth.urls')),
     path('admin/', admin.site.urls),
     path('',include('apps.goods.urls')),
-    path('',include('apps.carts.urls')),
-    path('',include('apps.orders.urls')),
+    path('', include('apps.mall.carts.urls')),
+    path('', include('apps.mall.orders.urls')),
+    path('', include('apps.mall.payment.urls'))
 ]

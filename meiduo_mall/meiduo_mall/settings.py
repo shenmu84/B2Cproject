@@ -27,42 +27,9 @@ STATICFILES_DIRS = [
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['www.meiduo.site','127.0.0.1','192.168.106.82']
+ALLOWED_HOSTS = ['localhost','www.meiduo.site','127.0.0.1','192.168.106.82']
 
 # Application definition
-
-INSTALLED_APPS = [
-    'corsheaders',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'apps.users',
-    'apps.verifications',
-    'apps.oauth',
-    'apps.areas',
-    'apps.goods',
-    'apps.contents',
-    'haystack',
-    'django_crontab',
-    'apps.carts',
-    'apps.orders'
-
-]
-#替换系统的USER模型
-AUTH_USER_MODEL='users.User'
-#跨域添加白名单
-# CORS
-CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
-    'http://www.meiduo.site:8080',
-    'http://192.168.106.82:8080',
-]
-CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
-
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -73,6 +40,43 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+INSTALLED_APPS = [
+    'corsheaders',
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'apps.mall.users',
+    'apps.mall.verifications',
+    'apps.mall.oauth',
+    'apps.mall.areas',
+    'apps.mall.goods',
+    'apps.mall.contents',
+    'haystack',
+    'django_crontab',
+    'apps.mall.carts',
+    'apps.mall.orders',
+    'apps.mall.payment',
+    'apps.Management.common',
+    'apps.Management.users',
+    'apps.Management.menu',
+
+]
+
+#替换系统的USER模型
+AUTH_USER_MODEL= 'users.User'
+#跨域添加白名单
+# CORS
+CORS_ALLOWED_ORIGINS = [
+    'http://127.0.0.1:8090/',
+    'http://127.0.0.1:8080',
+    'http://www.meiduo.site:8080',
+]
+CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
+
+
 '''celery配置'''
 CELERY_BROKER_URL = 'redis://localhost:6379/15'
 # 任务超时时间（例如 30 分钟）
@@ -113,8 +117,26 @@ DATABASES = {
         'USER':'root',
         'PASSWORD':'root',
         'NAME': 'meiduo_mail',
-    }
+    },
+    'slave': {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST':'127.0.0.1',
+        'PORT':'8306',
+        'USER':'root',
+        'PASSWORD':'mysql',
+        'NAME': 'meiduo_mail',
+    },
+    'mall': {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
+        'USER': 'root',
+        'PASSWORD': 'root',
+        'NAME': 'mall',
+    },
+
 }
+DATABASE_ROUTERS = ['common.db_router.MasterSlaveDBRouter']
 #django-redis
 CACHES = {
     "default": {
@@ -152,14 +174,29 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
+},
+    "ums": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/5",  # 第0号数据库
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 100,  # 设置最大连接数
+            },
+        }
+    }
 }
-}
+REDIS_DATABASE = 'mall'  # Redis 数据库名称，可以从配置文件中获取
+REDIS_KEY_ADMIN = "ums:admin"  # 后台管理员的 Redis 键前缀
+REDIS_KEY_RESOURCE_LIST = "ums:resourceList"  # 资源列表的 Redis 键前缀
+REDIS_EXPIRE_COMMON = 86400  # 默认缓存过期时间为 24 小时（86400 秒）
+
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "session"
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
-
+JWT_TOKEN_HEAD = 'Bearer'
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -211,7 +248,7 @@ LOGGING = {
     },
     "filters": {
         "require_debug_true": {
-            "()": "django.utils.log.RequireDebugTrue",
+            "()": 'django.utils.log.RequireDebugTrue',
         },
     },
     "handlers": {
@@ -257,7 +294,7 @@ EMAIL_HOST_USER = 'shenmu_ovo@163.com'
 EMAIL_HOST_PASSWORD = 'HWciBtuMM9EGBtV5'
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
-DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.MyStorage'
+DEFAULT_FILE_STORAGE = 'common.fastdfs.storage.MyStorage'
 FDFS_BASE_URL = 'http://image.meiduo.site:8888/'
 
 #haystack
@@ -280,3 +317,11 @@ CRONJOBS = [
 ]
 #crontab解决中文配置问题
 CRONTAB_COMMAND_PREFIX='LANG_ALL=zh_cn.UTF-8'
+
+#支付宝的配置
+ALIPAY_APPID="2021000148614776"
+ALIPAY_DEBUG=True
+ALIPAY_URL="https://openapi.alipaydev.com/gateway.do"
+ALIPAY_RETURN_URL="http://www.meiduo.site:8080/pay_success.html"
+APP_PRIVATE_KEY_PATH=os.path.join(BASE_DIR, 'apps/mall/payment/key/app_private_key.pem')
+ALIPAY_PUBLIC_KEY_PATH=os.path.join(BASE_DIR, 'apps/mall/payment/key/alipay_public_key.pem')
