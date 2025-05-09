@@ -299,3 +299,384 @@ class UserHistoryView(LoginRequiredJSONMixin, View):
 
         # 5. 返回JSON
         return JsonResponse({'code': 0, 'errmsg': 'ok', 'skus': history_list})
+
+"""
+用户相关API视图
+"""
+from typing import Any, Dict
+from django.http import HttpRequest
+from django.views import View
+from django.contrib.auth import login, logout, authenticate
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from django_redis import get_redis_connection
+from django.contrib.auth import get_user_model
+
+from utils.response import APIResponse
+from utils.decorators import login_required, rate_limit, log_api_call, cache_response
+from .models import User, Address
+from .serializers import UserSerializer, AddressSerializer
+
+User = get_user_model()
+
+class UserRegisterView(View):
+    """用户注册视图"""
+    
+    @log_api_call
+    @rate_limit(limit=5, period=300)  # 5分钟内最多注册5次
+    def post(self, request: HttpRequest) -> APIResponse:
+        """
+        用户注册
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取请求数据
+            data = request.POST.dict()
+            
+            # 验证数据
+            self._validate_register_data(data)
+            
+            # 检查用户名是否已存在
+            if User.objects.filter(username=data['username']).exists():
+                return APIResponse.error(message="用户名已存在")
+                
+            # 检查手机号是否已存在
+            if data.get('mobile') and User.objects.filter(mobile=data['mobile']).exists():
+                return APIResponse.error(message="手机号已被注册")
+                
+            # 检查邮箱是否已存在
+            if data.get('email') and User.objects.filter(email=data['email']).exists():
+                return APIResponse.error(message="邮箱已被注册")
+            
+            # 创建用户
+            user = User.objects.create_user(
+                username=data['username'],
+                password=data['password'],
+                email=data.get('email', ''),
+                mobile=data.get('mobile', '')
+            )
+            
+            # 自动登录
+            login(request, user)
+            
+            # 序列化用户数据
+            user_data = UserSerializer(user).data
+            
+            return APIResponse.success(
+                data=user_data,
+                message="注册成功"
+            )
+            
+        except ValidationError as e:
+            return APIResponse.error(message=str(e))
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    def _validate_register_data(self, data: Dict[str, Any]) -> None:
+        """
+        验证注册数据
+        
+        Args:
+            data: 注册数据
+            
+        Raises:
+            ValidationError: 验证错误
+        """
+        # 验证用户名
+        if not data.get('username'):
+            raise ValidationError("用户名不能为空")
+        if len(data['username']) < 3 or len(data['username']) > 20:
+            raise ValidationError("用户名长度必须在3-20个字符之间")
+            
+        # 验证密码
+        if not data.get('password'):
+            raise ValidationError("密码不能为空")
+        if len(data['password']) < 6 or len(data['password']) > 20:
+            raise ValidationError("密码长度必须在6-20个字符之间")
+            
+        # 验证邮箱
+        if data.get('email'):
+            try:
+                validate_email(data['email'])
+            except ValidationError:
+                raise ValidationError("邮箱格式不正确")
+                
+        # 验证手机号
+        if data.get('mobile'):
+            if not data['mobile'].isdigit() or len(data['mobile']) != 11:
+                raise ValidationError("手机号格式不正确")
+
+class UserLoginView(View):
+    """用户登录视图"""
+    
+    @log_api_call
+    @rate_limit(limit=10, period=300)  # 5分钟内最多登录10次
+    def post(self, request: HttpRequest) -> APIResponse:
+        """
+        用户登录
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取请求数据
+            data = request.POST.dict()
+            
+            # 验证数据
+            if not data.get('username') or not data.get('password'):
+                return APIResponse.error(message="用户名和密码不能为空")
+                
+            # 验证用户
+            user = authenticate(
+                username=data['username'],
+                password=data['password']
+            )
+            
+            if not user:
+                return APIResponse.error(message="用户名或密码错误")
+                
+            if not user.is_active:
+                return APIResponse.error(message="账号已被禁用")
+                
+            # 登录用户
+            login(request, user)
+            
+            # 更新最后登录时间
+            user.save()
+            
+            # 序列化用户数据
+            user_data = UserSerializer(user).data
+            
+            return APIResponse.success(
+                data=user_data,
+                message="登录成功"
+            )
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+
+class UserLogoutView(View):
+    """用户登出视图"""
+    
+    @log_api_call
+    @login_required
+    def post(self, request: HttpRequest) -> APIResponse:
+        """
+        用户登出
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 清除用户会话
+            logout(request)
+            
+            # 清除Redis中的用户数据
+            redis_conn = get_redis_connection('default')
+            redis_conn.delete(f'user:{request.user.id}:*')
+            
+            return APIResponse.success(message="登出成功")
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+
+class UserProfileView(View):
+    """用户资料视图"""
+    
+    @log_api_call
+    @login_required
+    @cache_response(timeout=300)  # 缓存5分钟
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取用户资料
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 序列化用户数据
+            user_data = UserSerializer(request.user).data
+            
+            return APIResponse.success(data=user_data)
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    @log_api_call
+    @login_required
+    def put(self, request: HttpRequest) -> APIResponse:
+        """
+        更新用户资料
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取请求数据
+            data = request.PUT.dict()
+            
+            # 验证数据
+            self._validate_profile_data(data)
+            
+            # 更新用户资料
+            user = request.user
+            for key, value in data.items():
+                if hasattr(user, key):
+                    setattr(user, key, value)
+            user.save()
+            
+            # 清除缓存
+            redis_conn = get_redis_connection('default')
+            redis_conn.delete(f'user:{user.id}:*')
+            
+            # 序列化用户数据
+            user_data = UserSerializer(user).data
+            
+            return APIResponse.success(
+                data=user_data,
+                message="更新成功"
+            )
+            
+        except ValidationError as e:
+            return APIResponse.error(message=str(e))
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    def _validate_profile_data(self, data: Dict[str, Any]) -> None:
+        """
+        验证用户资料数据
+        
+        Args:
+            data: 用户资料数据
+            
+        Raises:
+            ValidationError: 验证错误
+        """
+        # 验证邮箱
+        if data.get('email'):
+            try:
+                validate_email(data['email'])
+            except ValidationError:
+                raise ValidationError("邮箱格式不正确")
+                
+        # 验证手机号
+        if data.get('mobile'):
+            if not data['mobile'].isdigit() or len(data['mobile']) != 11:
+                raise ValidationError("手机号格式不正确")
+
+class UserAddressView(View):
+    """用户地址视图"""
+    
+    @log_api_call
+    @login_required
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取用户地址列表
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取用户地址列表
+            addresses = Address.objects.filter(user=request.user, is_deleted=False)
+            
+            # 序列化地址数据
+            address_data = AddressSerializer(addresses, many=True).data
+            
+            return APIResponse.success(data=address_data)
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    @log_api_call
+    @login_required
+    def post(self, request: HttpRequest) -> APIResponse:
+        """
+        创建用户地址
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取请求数据
+            data = request.POST.dict()
+            
+            # 验证数据
+            self._validate_address_data(data)
+            
+            # 检查地址数量限制
+            if Address.objects.filter(user=request.user, is_deleted=False).count() >= 20:
+                return APIResponse.error(message="地址数量已达上限")
+            
+            # 创建地址
+            address = Address.objects.create(
+                user=request.user,
+                **data
+            )
+            
+            # 序列化地址数据
+            address_data = AddressSerializer(address).data
+            
+            return APIResponse.success(
+                data=address_data,
+                message="创建成功"
+            )
+            
+        except ValidationError as e:
+            return APIResponse.error(message=str(e))
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    def _validate_address_data(self, data: Dict[str, Any]) -> None:
+        """
+        验证地址数据
+        
+        Args:
+            data: 地址数据
+            
+        Raises:
+            ValidationError: 验证错误
+        """
+        # 验证必填字段
+        required_fields = ['receiver', 'province', 'city', 'district', 'place', 'mobile']
+        for field in required_fields:
+            if not data.get(field):
+                raise ValidationError(f"{field}不能为空")
+                
+        # 验证手机号
+        if not data['mobile'].isdigit() or len(data['mobile']) != 11:
+            raise ValidationError("手机号格式不正确")
+            
+        # 验证固定电话
+        if data.get('tel'):
+            if not data['tel'].isdigit() or len(data['tel']) < 5:
+                raise ValidationError("固定电话格式不正确")
+                
+        # 验证邮箱
+        if data.get('email'):
+            try:
+                validate_email(data['email'])
+            except ValidationError:
+                raise ValidationError("邮箱格式不正确")

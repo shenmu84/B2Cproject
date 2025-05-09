@@ -8,6 +8,11 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
 from django_redis import get_redis_connection
+from rest_framework import status
+from utils.response import APIResponse
+from utils.decorators import log_api_call, login_required
+from .serializers import OrderSerializer
+from .models import OrderInfo
 
 from apps.mall.goods.models import SKU
 from apps.mall.users.models import Address
@@ -146,4 +151,172 @@ class OrderCommitView(LoginRequiredMixin, View):
             orderinfo.save()
             transaction.savepoint_commit(point)
         return JsonResponse({'code':0,'errmsg':'ok','order_id':order_id})
+
+class OrderView(View):
+    """订单视图"""
+    
+    @log_api_call
+    @login_required
+    def post(self, request: HttpRequest) -> APIResponse:
+        """
+        创建订单
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取请求数据
+            data = request.POST.dict()
+            
+            # 验证数据
+            serializer = OrderSerializer(data=data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            
+            # 创建订单
+            order = serializer.save()
+            
+            return APIResponse.success(
+                data=serializer.data,
+                message="订单创建成功"
+            )
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    @log_api_call
+    @login_required
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取订单列表
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取用户订单
+            orders = OrderInfo.objects.filter(user=request.user).order_by('-create_time')
+            
+            # 序列化数据
+            serializer = OrderSerializer(orders, many=True)
+            
+            return APIResponse.success(data=serializer.data)
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+class OrderDetailView(View):
+    """订单详情视图"""
+    
+    @log_api_call
+    @login_required
+    def get(self, request: HttpRequest, order_id: str) -> APIResponse:
+        """
+        获取订单详情
+        
+        Args:
+            request: HTTP请求
+            order_id: 订单ID
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取订单
+            try:
+                order = OrderInfo.objects.get(order_id=order_id, user=request.user)
+            except OrderInfo.DoesNotExist:
+                return APIResponse.not_found(message="订单不存在")
+                
+            # 序列化数据
+            serializer = OrderSerializer(order)
+            
+            return APIResponse.success(data=serializer.data)
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    @log_api_call
+    @login_required
+    def put(self, request: HttpRequest, order_id: str) -> APIResponse:
+        """
+        更新订单状态
+        
+        Args:
+            request: HTTP请求
+            order_id: 订单ID
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取订单
+            try:
+                order = OrderInfo.objects.get(order_id=order_id, user=request.user)
+            except OrderInfo.DoesNotExist:
+                return APIResponse.not_found(message="订单不存在")
+                
+            # 获取请求数据
+            data = request.PUT.dict()
+            status = data.get('status')
+            
+            if not status:
+                return APIResponse.error(message="订单状态不能为空")
+                
+            # 验证状态
+            if status not in OrderInfo.ORDER_STATUS_ENUM.values():
+                return APIResponse.error(message="订单状态不正确")
+                
+            # 更新订单状态
+            order.status = status
+            order.save()
+            
+            return APIResponse.success(message="订单状态更新成功")
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    @log_api_call
+    @login_required
+    def delete(self, request: HttpRequest, order_id: str) -> APIResponse:
+        """
+        取消订单
+        
+        Args:
+            request: HTTP请求
+            order_id: 订单ID
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取订单
+            try:
+                order = OrderInfo.objects.get(order_id=order_id, user=request.user)
+            except OrderInfo.DoesNotExist:
+                return APIResponse.not_found(message="订单不存在")
+                
+            # 检查订单状态
+            if order.status != OrderInfo.ORDER_STATUS_ENUM['UNPAID']:
+                return APIResponse.error(message="只能取消未支付的订单")
+                
+            # 恢复商品库存
+            for order_goods in order.skus.all():
+                sku = order_goods.sku
+                sku.stock += order_goods.count
+                sku.sales -= order_goods.count
+                sku.save()
+                
+            # 删除订单
+            order.delete()
+            
+            return APIResponse.success(message="订单取消成功")
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
 

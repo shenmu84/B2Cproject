@@ -4,6 +4,13 @@ from apps.orders.models import OrderInfo
 from apps.mall.payment.models import Payment
 from meiduo_mall import settings
 from alipay import AliPay,AliPayConfig
+from typing import Dict, Any
+from django.http import HttpRequest
+from django.db import transaction
+from utils.response import APIResponse
+from utils.decorators import log_api_call, login_required
+from .serializers import PaymentSerializer
+
 class PayUrlView(View):
     def get(self,request,order_id):
         user=request.user
@@ -79,3 +86,137 @@ class PaymentStatusView(View):
         else:
 
             return JsonResponse({'code': 400, 'errmsg': '请到个人中心的订单中查询订单状态'})
+
+class PaymentView(View):
+    """支付视图"""
+    
+    @log_api_call
+    @login_required
+    def post(self, request: HttpRequest) -> APIResponse:
+        """
+        创建支付
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取请求数据
+            data = request.POST.dict()
+            order_id = data.get('order_id')
+            
+            if not order_id:
+                return APIResponse.error(message="订单ID不能为空")
+                
+            # 获取订单
+            try:
+                order = OrderInfo.objects.get(order_id=order_id, user=request.user)
+            except OrderInfo.DoesNotExist:
+                return APIResponse.not_found(message="订单不存在")
+                
+            # 验证订单状态
+            if order.status != OrderInfo.ORDER_STATUS_ENUM['UNPAID']:
+                return APIResponse.error(message="订单状态不正确")
+                
+            # 创建支付记录
+            payment_data = {
+                'order': order,
+                'payment_method': data.get('payment_method'),
+                'amount': order.total_amount + order.freight
+            }
+            
+            serializer = PaymentSerializer(data=payment_data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            
+            with transaction.atomic():
+                payment = serializer.save()
+                
+                # 调用支付接口
+                if payment.payment_method == Payment.PAYMENT_METHODS_ENUM['ALIPAY']:
+                    # 调用支付宝接口
+                    trade_id = self._create_alipay_order(payment)
+                else:
+                    # 调用微信支付接口
+                    trade_id = self._create_wechat_order(payment)
+                    
+                # 更新支付记录
+                payment.trade_id = trade_id
+                payment.save()
+                
+            return APIResponse.success(
+                data=serializer.data,
+                message="支付创建成功"
+            )
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    @log_api_call
+    @login_required
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取支付状态
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取请求参数
+            trade_id = request.GET.get('trade_id')
+            
+            if not trade_id:
+                return APIResponse.error(message="交易ID不能为空")
+                
+            # 获取支付记录
+            try:
+                payment = Payment.objects.get(trade_id=trade_id, order__user=request.user)
+            except Payment.DoesNotExist:
+                return APIResponse.not_found(message="支付记录不存在")
+                
+            # 查询支付状态
+            if payment.payment_method == Payment.PAYMENT_METHODS_ENUM['ALIPAY']:
+                # 查询支付宝支付状态
+                status = self._query_alipay_status(payment)
+            else:
+                # 查询微信支付状态
+                status = self._query_wechat_status(payment)
+                
+            # 更新支付状态
+            if status != payment.status:
+                payment.status = status
+                payment.save()
+                
+                # 更新订单状态
+                if status == Payment.PAYMENT_STATUS_ENUM['SUCCESS']:
+                    payment.order.status = OrderInfo.ORDER_STATUS_ENUM['UNSEND']
+                    payment.order.save()
+                    
+            return APIResponse.success(data={'status': status})
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+            
+    def _create_alipay_order(self, payment: Payment) -> str:
+        """创建支付宝订单"""
+        # TODO: 实现支付宝支付接口
+        return f"ALIPAY_{payment.id}"
+        
+    def _create_wechat_order(self, payment: Payment) -> str:
+        """创建微信支付订单"""
+        # TODO: 实现微信支付接口
+        return f"WECHAT_{payment.id}"
+        
+    def _query_alipay_status(self, payment: Payment) -> int:
+        """查询支付宝支付状态"""
+        # TODO: 实现支付宝支付状态查询
+        return Payment.PAYMENT_STATUS_ENUM['PENDING']
+        
+    def _query_wechat_status(self, payment: Payment) -> int:
+        """查询微信支付状态"""
+        # TODO: 实现微信支付状态查询
+        return Payment.PAYMENT_STATUS_ENUM['PENDING']

@@ -1,20 +1,24 @@
+"""
+用户相关URL配置
+"""
 from django.urls import path
-from meiduo_mall.apps.mall.users.views import *
-urlpatterns=[
-    path('carts/simple/',tentative.as_view()),
-    path('register/',post_json),
-    path('info/',CenterView.as_view()),
-    path('emails/',EmailView.as_view()),
-    path('emails/verification/',EmailVerifyView.as_view()),
+from . import views
 
-    path('logout/',LogoutView.as_view()),
-    path('mobiles/<mobile>/count/',MobileCountView.as_view()),
-    path('log',log),
-    #path('login/',LoginView.as_view()),
-    path('usernames/<username:username>/count/',UsernameCountView.as_view()),
-    path('log/',log),
-    path('addresses/create/',AddressCreateView.as_view()),
-    path('addresses/',AddressView.as_view()),
+app_name = 'users'
 
-    path('browse_histories/', UserHistoryView.as_view()),
+urlpatterns = [
+    # 用户注册
+    path('register/', views.UserRegisterView.as_view(), name='register'),
+    
+    # 用户登录
+    path('login/', views.UserLoginView.as_view(), name='login'),
+    
+    # 用户登出
+    path('logout/', views.UserLogoutView.as_view(), name='logout'),
+    
+    # 用户资料
+    path('profile/', views.UserProfileView.as_view(), name='profile'),
+    
+    # 用户地址
+    path('addresses/', views.UserAddressView.as_view(), name='addresses'),
 ]

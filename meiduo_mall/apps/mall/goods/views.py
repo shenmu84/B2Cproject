@@ -194,3 +194,217 @@ class CategoryVisitCountView(View):
             gvc.save()
         # 6. 返回响应
         return JsonResponse({'code':0,'errmsg':'ok'})
+
+"""
+商品相关API视图
+"""
+from typing import Any, Dict
+from django.http import HttpRequest
+from django.views import View
+from django.core.cache import cache
+from django_redis import get_redis_connection
+from django.core.paginator import Paginator
+from django.db.models import Q
+
+from utils.response import APIResponse
+from utils.decorators import log_api_call, cache_response
+from .models import GoodsCategory, GoodsChannel, SKU, SKUSpecification
+from .serializers import (
+    GoodsCategorySerializer, GoodsChannelSerializer,
+    SKUSerializer, GoodsSpecificationSerializer
+)
+
+class CategoryView(View):
+    """商品分类视图"""
+    
+    @log_api_call
+    @cache_response(timeout=3600)  # 缓存1小时
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取商品分类
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取所有一级分类
+            categories = GoodsCategory.objects.filter(parent=None)
+            
+            # 序列化分类数据
+            category_data = GoodsCategorySerializer(categories, many=True).data
+            
+            return APIResponse.success(data=category_data)
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+
+class ChannelView(View):
+    """商品频道视图"""
+    
+    @log_api_call
+    @cache_response(timeout=3600)  # 缓存1小时
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取商品频道
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取所有频道
+            channels = GoodsChannel.objects.all().order_by('sequence')
+            
+            # 序列化频道数据
+            channel_data = GoodsChannelSerializer(channels, many=True).data
+            
+            return APIResponse.success(data=channel_data)
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+
+class SKUListView(View):
+    """SKU列表视图"""
+    
+    @log_api_call
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取SKU列表
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取查询参数
+            category_id = request.GET.get('category_id')
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 10))
+            ordering = request.GET.get('ordering', '-create_time')
+            
+            # 构建查询
+            query = Q(is_launched=True)
+            if category_id:
+                query &= Q(category_id=category_id)
+                
+            # 获取SKU列表
+            skus = SKU.objects.filter(query).order_by(ordering)
+            
+            # 分页
+            paginator = Paginator(skus, page_size)
+            page_skus = paginator.get_page(page)
+            
+            # 序列化SKU数据
+            sku_data = SKUSerializer(page_skus, many=True).data
+            
+            return APIResponse.success(data={
+                'count': paginator.count,
+                'results': sku_data,
+                'page': page,
+                'pages': paginator.num_pages
+            })
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+
+class SKUDetailView(View):
+    """SKU详情视图"""
+    
+    @log_api_call
+    @cache_response(timeout=300)  # 缓存5分钟
+    def get(self, request: HttpRequest, sku_id: int) -> APIResponse:
+        """
+        获取SKU详情
+        
+        Args:
+            request: HTTP请求
+            sku_id: SKU ID
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取SKU
+            sku = SKU.objects.get(id=sku_id, is_launched=True)
+            
+            # 序列化SKU数据
+            sku_data = SKUSerializer(sku).data
+            
+            # 记录浏览历史
+            if request.user.is_authenticated:
+                redis_conn = get_redis_connection('history')
+                redis_conn.lrem(f'history_{request.user.id}', 0, sku_id)
+                redis_conn.lpush(f'history_{request.user.id}', sku_id)
+                redis_conn.ltrim(f'history_{request.user.id}', 0, 4)
+            
+            return APIResponse.success(data=sku_data)
+            
+        except SKU.DoesNotExist:
+            return APIResponse.not_found(message="商品不存在")
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+
+class SKUSpecificationView(View):
+    """SKU规格视图"""
+    
+    @log_api_call
+    @cache_response(timeout=3600)  # 缓存1小时
+    def get(self, request: HttpRequest, sku_id: int) -> APIResponse:
+        """
+        获取SKU规格
+        
+        Args:
+            request: HTTP请求
+            sku_id: SKU ID
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取SKU规格
+            sku = SKU.objects.get(id=sku_id, is_launched=True)
+            specs = sku.specs.all()
+            
+            # 序列化规格数据
+            spec_data = GoodsSpecificationSerializer(specs, many=True).data
+            
+            return APIResponse.success(data=spec_data)
+            
+        except SKU.DoesNotExist:
+            return APIResponse.not_found(message="商品不存在")
+        except Exception as e:
+            return APIResponse.server_error(str(e))
+
+class SKUHotView(View):
+    """SKU热门商品视图"""
+    
+    @log_api_call
+    @cache_response(timeout=300)  # 缓存5分钟
+    def get(self, request: HttpRequest) -> APIResponse:
+        """
+        获取热门商品
+        
+        Args:
+            request: HTTP请求
+            
+        Returns:
+            APIResponse: API响应
+        """
+        try:
+            # 获取热门商品
+            hot_skus = SKU.objects.filter(is_launched=True).order_by('-sales')[:10]
+            
+            # 序列化SKU数据
+            sku_data = SKUSerializer(hot_skus, many=True).data
+            
+            return APIResponse.success(data=sku_data)
+            
+        except Exception as e:
+            return APIResponse.server_error(str(e))

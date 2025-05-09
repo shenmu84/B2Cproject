@@ -1,5 +1,15 @@
+"""
+购物车相关URL配置
+"""
 from django.urls import path
-from apps.mall.carts.views import *
+from . import views
+
+app_name = 'carts'
+
 urlpatterns = [
-    path('carts/', CartsView.as_view()),
-    ]
+    # 购物车
+    path('', views.CartView.as_view(), name='cart'),
+    
+    # 购物车选择
+    path('select/', views.CartSelectView.as_view(), name='select'),
+]
