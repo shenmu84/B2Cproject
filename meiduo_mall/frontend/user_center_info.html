@@ -3,12 +3,12 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <title>美多商城-用户中心</title>
-    <link rel="stylesheet" type="text/css" href="css/reset.css">
-    <link rel="stylesheet" type="text/css" href="css/main.css">
-    <script type="text/javascript" src="js/host.js"></script>
-    <script type="text/javascript" src="js/vue-2.5.16.js"></script>
-    <script type="text/javascript" src="js/axios-0.18.0.min.js"></script>
-    <script type="text/javascript" src="js/jquery-1.12.4.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/css/reset.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/main.css">
+    <script type="text/javascript" src="/static/js/host.js"></script>
+    <script type="text/javascript" src="/static/js/vue-2.5.16.js"></script>
+    <script type="text/javascript" src="/static/js/axios-0.18.0.min.js"></script>
+    <script type="text/javascript" src="/static/js/jquery-1.12.4.min.js"></script>
 </head>
 <body>
     <div id="app" v-cloak>
@@ -23,20 +23,20 @@
                 </div>
                 <div class="user_link fl">
                     <span>|</span>
-                    <a href="user_center_info.html">用户中心</a>
+                    <a href="/ststic/user_center_info.html">用户中心</a>
                     <span>|</span>
-                    <a href="cart.html">我的购物车</a>
+                    <a href="/ststic/cart.html">我的购物车</a>
                     <span>|</span>
-                    <a href="user_center_order.html">我的订单</a>
+                    <a href="/ststic/user_center_order.html">我的订单</a>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="search_bar clearfix">
-        <a href="index.html" class="logo fl"><img src="images/logo.png"></a>
+        <a href="/static/index.html" class="logo fl"><img src="/static/images/logo.png"></a>
         <div class="sub_page_name fl">|&nbsp;&nbsp;&nbsp;&nbsp;用户中心</div>
-        <form method="get" action="/search.html" class="search_con fr mt40">
+        <form method="get" action="/static/search.html" class="search_con fr mt40">
             <input type="text" class="input_text fl" name="q" placeholder="搜索商品">
             <input type="submit" class="input_btn fr" name="" value="搜索">
         </form>
@@ -46,10 +46,10 @@
         <div class="left_menu_con clearfix">
             <h3>用户中心</h3>
             <ul>
-                <li><a href="user_center_info.html" class="active">· 个人信息</a></li>
-                <li><a href="user_center_order.html">· 全部订单</a></li>
-                <li><a href="user_center_site.html">· 收货地址</a></li>
-                <li><a href="user_center_pass.html">· 修改密码</a></li>
+                <li><a href="/static/user_center_info.html" class="active">· 个人信息</a></li>
+                <li><a href="/static/user_center_order.html">· 全部订单</a></li>
+                <li><a href="/static/user_center_site.html">· 收货地址</a></li>
+                <li><a href="/static/user_center_pass.html">· 修改密码</a></li>
             </ul>
         </div>
         <div class="right_content clearfix">
