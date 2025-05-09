@@ -119,7 +119,7 @@ class EmailView(View):
         user.save()
         #django的发送邮件类
         token=makeToken(request.user.id,3600)
-        verify_url = "http://www.meiduo.site:8080/success_verify_email.html?token=%s" % token
+        verify_url = "http://www.meiduo.site:8000/success_verify_email.html?token=%s" % token
         # 4.2 组织我们的激活邮件
         html_message='<p>尊敬的用户您好！</p>' \
                        '<p>感谢您使用美多商城。</p>' \

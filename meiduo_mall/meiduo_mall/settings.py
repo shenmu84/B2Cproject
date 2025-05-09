@@ -27,7 +27,7 @@ STATICFILES_DIRS = [
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['www.meiduo.site','127.0.0.1','192.168.106.82']
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -56,10 +56,10 @@ AUTH_USER_MODEL='users.User'
 #跨域添加白名单
 # CORS
 CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
-    'http://www.meiduo.site:8080',
-    'http://192.168.106.82:8080',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'http://www.meiduo.site:8000',
+    'http://192.168.106.82:8000',
 ]
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
 
@@ -82,11 +82,10 @@ CELERY_TASK_TRACK_STARTED = True
 
 
 ROOT_URLCONF = 'meiduo_mall.urls'
-
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR,'templates')],
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',  # 这一行是必须的
+        'DIRS': [os.path.join(BASE_DIR, 'frontend')],  # 指定模板文件夹路径
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -98,6 +97,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = 'meiduo_mall.wsgi.application'
 
@@ -189,11 +189,16 @@ USE_L10N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-
+#告诉 Django：以后加载 CSS、JS、图片等静态资源，统一通过 /static/ 这个 URL 前缀访问
 STATIC_URL = '/static/'
+
+# 告诉 Django：去 frontend/ 文件夹里找静态文件（比如 css/reset.css），并当它们是“静态资源”暴露在 /static/ 下面
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'frontend/'),
+    os.path.join(BASE_DIR,'adminManagement/'),
+
+]
+
 
 #日志
 LOGGING = {

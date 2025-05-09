@@ -15,21 +15,24 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.http import HttpResponse
-from django.urls import path, include
+from django.urls import path, include, re_path
 
 from apps import verifications
 from utils.converters import UsernameConverter
 from django.urls import register_converter
 register_converter(UsernameConverter,'username')
 
+from django.views.generic import TemplateView
+
+
 
 
 urlpatterns = [
+    re_path(r'^$', TemplateView.as_view(template_name="index.html")),  # 映射首页
     path('',include('apps.users.urls')),
     path('',include('apps.verifications.urls')),
     path('',include('apps.areas.urls')),
     path('',include('apps.oauth.urls')),
-    path('admin/', admin.site.urls),
     path('',include('apps.goods.urls')),
     path('',include('apps.carts.urls')),
     path('',include('apps.orders.urls')),
