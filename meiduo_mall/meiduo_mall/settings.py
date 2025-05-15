@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     'haystack',
     'django_crontab',
     'apps.carts',
-    'apps.orders'
+    'apps.orders',
+    'apps.testapp'
 
 ]
 #替换系统的USER模型

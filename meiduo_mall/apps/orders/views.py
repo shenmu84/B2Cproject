@@ -94,7 +94,7 @@ class OrderCommitView(LoginRequiredMixin, View):
         # 运费
         freight = Decimal('10.00')
         with transaction.atomic():
-            point= transaction.atomic()
+            point= transaction.savepoint()
             try:
                 orderinfo = OrderInfo.objects.create(
                     order_id=order_id,

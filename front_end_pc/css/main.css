@@ -192,14 +192,16 @@ html,body{height:100%}
 .adv{width:240px;height:270px; overflow:hidden; background-color:gold;}
 .adv a{display:block;float:left;}
 
-.slide{width:100%;height:350px;position:relative;}
+.slide{width:100%;height:550px;position:relative;}
 .slide li{width:100%;height:350px;position:absolute;left:0px;top:0px;overflow:hidden;}
 .slide li a{display:block;width:100%;height:350px;}
-.slide li a img{
-	position:absolute;
-	left:50%;
-	top:0px;
-	margin-left:-800px;
+.slide li a img {
+    position: absolute;
+    left: 50%;
+    top: 0px;
+    max-width: 100%;       /* 保证不会超出容器宽度 */
+    height: auto;          /* 按比例缩放高度 */
+    transform: translateX(-50%); /* 替代 margin-left 实现水平居中 */
 }
 
 
