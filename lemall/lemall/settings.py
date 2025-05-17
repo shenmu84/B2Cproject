@@ -56,10 +56,10 @@ AUTH_USER_MODEL='users.User'
 #跨域添加白名单
 # CORS
 CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
-    'http://www.lemall.site:8080',
-    'http://192.168.106.82:8080',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'http://www.lemall.site:8000',
+    'http://192.168.106.82:8000',
 ]
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
 
@@ -218,7 +218,13 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'frontend/TimeSeries'),
     os.path.join(BASE_DIR, 'frontend/echarts'),
     os.path.join(BASE_DIR, 'frontend/RFM'),
-os.path.join(BASE_DIR, 'frontend/TEST'),
+    os.path.join(BASE_DIR, 'frontend/TEST'),
+    os.path.join(BASE_DIR, 'frontend/front_end_pc'),
+os.path.join(BASE_DIR, 'frontend/front_end_pc/css'),
+os.path.join(BASE_DIR, 'frontend/front_end_pc/goods'),
+os.path.join(BASE_DIR, 'frontend/front_end_pc/images'),
+os.path.join(BASE_DIR, 'frontend/front_end_pc/js'),
+os.path.join(BASE_DIR, 'frontend/front_end_pc/static'),
 ]
 #日志
 LOGGING = {
@@ -267,7 +273,7 @@ LOGGING = {
 #QQ登录参数
 GITEE_CLIENT_ID='b567b3ee312c21b489c265407cd918b742a301dd87040849296b73c38cb74647'
 GITEE_CLIENT_SECRET='6d579391a77cb71f2c3b850ebdfbc4a415729fd1a30e4ed130bc3ad3fe203d72'
-GITEE_REDIRECT_URI='http://localhost:8080/oauth_callback.html'
+GITEE_REDIRECT_URI='http://localhost:8000/manage/oauth_callback.html'
 #邮箱配置
 #  让django的哪个类来发送邮件
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -283,7 +289,7 @@ EMAIL_HOST_PASSWORD = 'HWciBtuMM9EGBtV5'
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.MyStorage'
-FDFS_BASE_URL = 'http://image.meiduo.site:8888/'
+FDFS_BASE_URL = 'http://image.lemall.site:8888/'
 
 #haystack
 #需要添加一个设置来指示您的站点配置文件将存放在何处以及使用哪个后端
