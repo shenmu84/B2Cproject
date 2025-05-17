@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <script src="/manage/echarts.min.js"></script>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      padding: 20px;
+    }
+    #pieChart {
+      width: 60%;
+      height: 600px;
+    }
+    #suggestions {
+      width: 35%;
+      padding-left: 20px;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    h2 {
+      text-align: center;
+      margin: 20px 0;
+    }
+  .suggest-item {
+  background-color: #ffffff;
+  border-left: 5px solid #3ba272;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  min-height: 50px; /* 根据内容自动调整高度 */
+  box-sizing: border-box; /* 确保padding不会影响总高度 */
+}
+
+  </style>
+</head>
+<body>
+<div class="container">
+  <div id="pieChart"></div>
+  <div id="suggestions">
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  fetch("/behaviorPath")
+    .then(response => response.json())
+    .then(data => {
+      // 判断 links 是否为数组
+      const pathMap = new Map();
+      data.links.forEach(link => {
+        const label = link.pathLabel || "未知路径";
+        const value = Number(link.value) || 0;
+        pathMap.set(label, (pathMap.get(label) || 0) + value);
+      });
+
+      const pieData = Array.from(pathMap.entries()).map(([name, value]) => ({ name, value }));
+
+      const chartDom = document.getElementById('pieChart');
+      const myChart = echarts.init(chartDom);
+
+      const option = {
+        title: {
+          text: '用户路径构成比例',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter: '{b}: {c} 次 ({d}%)'
+        },
+        legend: {
+          type: 'scroll',
+          orient: 'vertical',
+          left: 'left'
+        },
+        series: [{
+          name: '路径分布',
+          type: 'pie',
+          radius: '60%',
+          center: ['60%', '50%'],
+          data: pieData,
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          },
+          label: {
+            formatter: '{b}\n{d}%',
+            fontSize: 14
+          }
+        }]
+      };
+
+      myChart.setOption(option);
+console.log(pieData);  // 检查 pieData 是否为空
+        // 找出频率最高的路径
+        const maxItem = pieData.reduce((prev, curr) => (curr.value > prev.value ? curr : prev));
+        console.log(maxItem)
+        // 根据路径描述生成实际建议
+        let advice = '';
+        if (maxItem.name.includes("浏览了 → 购买了")) {
+          advice = "大量用户在浏览后直接购买，建议继续优化商品详情页的内容，例如：加入高质量图片、短视频介绍，强化商品卖点，提升转化率。";
+        } else if (maxItem.name.includes("浏览了 → 加购了 → 购买了")) {
+          advice = "用户加购后购买行为明显，建议在加购页面设置限时优惠或提醒功能，促进加购转化为购买。";
+        } else if (maxItem.name.includes("浏览了 → 收藏了 → 购买了")) {
+          advice = "收藏后再购买路径占比较高，说明用户犹豫期较长，建议在收藏商品上加入价格波动提醒、评论引导等方式，推动用户下单。";
+        } else {
+          advice = "建议关注用户行为路径中的高频路径，结合具体页面内容进行重点优化以提高销量。";
+        }
+
+        // 显示建议
+        const suggestionDiv = document.getElementById('suggestions');
+        suggestionDiv.innerHTML = '';
+
+        const div = document.createElement('div');
+        div.className = 'suggest-item';
+        div.innerHTML = `<strong>路径：「${maxItem.name}」</strong><br>${advice}<br><em>次数：${maxItem.value}</em>`;
+        suggestionDiv.appendChild(div);
+
+
+    })
+    .catch(error => {
+      console.error("加载饼图数据失败：", error);
+      document.getElementById('pieChart').innerText = "数据加载失败，请检查后端接口或数据格式。";
+    });
+});
+</script>
+
+</body>
+</html>

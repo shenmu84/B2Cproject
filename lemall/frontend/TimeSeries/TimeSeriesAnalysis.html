@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>用户行为时间序列分析</title>
+  <script src="/manage/echarts.min.js"></script>
+
+<style>
+    body {
+      font-family: sans-serif;
+    }
+    .charts-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .chart-box {
+      flex: 0 0 48%;
+      height: 300px;
+      margin-top: 20px;
+    }
+    .summary {
+      margin: 10px 0 30px 0;
+    }
+    .recommend-box {
+  background-color: #f0f8ff;
+  border-left: 6px solid #4682b4;
+  padding: 16px;
+  margin: 30px 0;
+  font-family: "Microsoft YaHei", sans-serif;
+}
+.recommend-box h3 {
+  margin-top: 0;
+  color: #2f4f4f;
+}
+.recommend-box ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+.recommend-box ul li {
+  margin-bottom: 6px;
+}
+.summary-box {
+  background-color: #f0f8ff;
+  border-left: 6px solid #4682b4;
+  padding: 16px;
+  margin: 20px 0;
+  font-family: "Microsoft YaHei", sans-serif;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  color: #2f4f4f;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.summary-highlight {
+  color: #d2691e;
+  font-weight: bold;
+}
+
+.summary-lowlight {
+  color: #4169e1;
+  font-weight: bold;
+}
+
+  </style>
+</head>
+<body>
+
+  <h2>用户行为趋势图（每天总计 vs 最新一天小时分布）</h2>
+  <div class="charts-container">
+    <div class="chart-box" id="main1"></div>
+    <div class="chart-box" id="main2"></div>
+  </div>
+  <div class="summary" id="dailySummary"></div>
+  <div class="summary" id="hourlySummary"></div>
+    <div id="recommendationBox" class="recommend-box" style="display:none;">
+      <h3>基于用户行为数据的运营建议</h3>
+      <ul id="recommendationList"></ul>
+    </div>
+
+  <script>
+      let dailyDataGlobal = null;
+
+    function getBuyPeaks(data, xAxis) {
+      const buyData = data.buy;
+      const max = Math.max(...buyData);
+      const min = Math.min(...buyData);
+      const maxTime = xAxis[buyData.indexOf(max)];
+      const minTime = xAxis[buyData.indexOf(min)];
+      return { max, maxTime, min, minTime };
+    }
+    function displayBuySummary(peaks, elementId, label) {
+  const summaryDiv = document.getElementById(elementId);
+  summaryDiv.className = 'summary-box';  // 添加统一美化类
+  summaryDiv.innerHTML = `
+    <strong>${label}购买高峰：</strong>
+    <span class="summary-highlight">${peaks.maxTime}</span>（${peaks.max} 次）<br>
+    <strong>最低活跃时间：</strong>
+    <span class="summary-lowlight">${peaks.minTime}</span>（${peaks.min} 次）
+  `;
+}
+
+
+function generateRecommendations(dailyData, hourlyData) {
+  const cartTotal = dailyData.cart.reduce((a, b) => a + b, 0);
+  const buyTotal = dailyData.buy.reduce((a, b) => a + b, 0);
+  const conversionRate = (buyTotal / cartTotal) * 100;
+
+  const hourlyBuyPeak = Math.max(...hourlyData.buy);
+  const peakHour = hourlyData.xAxis[hourlyData.buy.indexOf(hourlyBuyPeak)];
+
+  const recList = document.getElementById('recommendationList');
+  recList.innerHTML = ''; // 清空旧内容
+
+  if (conversionRate < 30) {
+    recList.innerHTML += '<li>加入购物车与购买转化率仅为 ' + conversionRate.toFixed(1) + '%，建议为高关注商品设置限时优惠，提升紧迫感。</li>';
+    recList.innerHTML += '<li>引导用户查看商品评价、使用案例，有助于建立信任促进购买。</li>';
+  } else {
+    recList.innerHTML += '<li>购物车转化率表现良好，可继续优化商品描述和推荐算法。</li>';
+  }
+
+  recList.innerHTML += '<li>用户购买行为在“' + peakHour + '”达到高峰，可在该时间段增加运营推送（如弹窗、优惠券）。</li>';
+
+  document.getElementById('recommendationBox').style.display = 'block';
+}
+
+    // 每天总计图
+    fetch('/get_behavior_daily_data')
+      .then(response => response.json())
+      .then(data => {
+        const chart1 = echarts.init(document.getElementById('main1'));
+        dailyDataGlobal = data; // 保存全局数据
+        chart1.setOption({
+          title: { text: '每天总计用户行为', left: 'center' },
+          tooltip: { trigger: 'axis' },
+          legend: { data: ['cart', 'fav', 'buy'], top: 25 },
+          xAxis: { type: 'category', data: data.xAxis, axisLabel: { rotate: 45 } },
+          yAxis: { type: 'value' },
+          series: [
+            { name: 'cart', type: 'line', data: data.cart },
+            { name: 'fav', type: 'line', data: data.fav },
+            { name: 'buy', type: 'line', data: data.buy }
+          ]
+        });
+
+        const buyPeaks = getBuyPeaks(data, data.xAxis);
+        displayBuySummary(buyPeaks, 'dailySummary', '每日');
+      });
+
+    // 最新一天小时图
+    fetch('/get_behavior_latest_day_data')
+      .then(response => response.json())
+      .then(data => {
+        const chart2 = echarts.init(document.getElementById('main2'));
+        chart2.setOption({
+          title: { text: `${data.date} 各时间段行为分布`, left: 'center' },
+          tooltip: { trigger: 'axis' },
+          legend: { data: ['cart', 'fav', 'buy'], top: 25 },
+          xAxis: { type: 'category', data: data.xAxis, axisLabel: { rotate: 45 } },
+          yAxis: { type: 'value' },
+          series: [
+            { name: 'cart', type: 'line', data: data.cart },
+            { name: 'fav', type: 'line', data: data.fav },
+            { name: 'buy', type: 'line', data: data.buy }
+          ]
+        });
+
+        const buyPeaks = getBuyPeaks(data, data.xAxis);
+        displayBuySummary(buyPeaks, 'hourlySummary', `${data.date}`);
+        // 调用建议生成函数
+        generateRecommendations(dailyDataGlobal, data);
+
+      });
+
+
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <script src="/manage/echarts.min.js"></script>
+  <style>
+    body { font-family: "Microsoft YaHei", sans-serif; margin: 0; padding: 0; }
+    #chart { width: 100%; height: 600px; }
+    h2 { text-align: center; margin-top: 20px; }
+  </style>
+</head>
+<body>
+<div id="chart"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  fetch("/behaviorPath")
+    .then(response => response.json())
+    .then(data => {
+      const chartDom = document.getElementById('chart');
+      const myChart = echarts.init(chartDom);
+
+      const option = {
+        title: {
+          text: '用户行为转化路径',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item',
+          triggerOn: 'mousemove'
+        },
+         series: [{
+      type: 'sankey',
+      layout: 'none',
+      data: data.nodes,
+      links: data.links,
+      emphasis: {
+        focus: 'adjacency'
+      },
+      lineStyle: {
+        curveness: 0.5
+      },
+      edgeLabel: {
+        show: true,
+        position: 'inside', // 可选 inside / top / bottom
+        color: '#000',
+        fontSize: 12,
+        formatter: function(params) {
+          return params.data.pathLabel || '';
+        }
+      },
+      label: {
+        show: true,
+        position: 'right'
+      }
+    }]
+
+      };
+
+      myChart.setOption(option);
+    })
+    .catch(error => {
+      console.error("加载桑基图数据失败：", error);
+      document.getElementById('chart').innerText = "数据加载失败，请检查接口。";
+    });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<!-- 声明文档类型为 HTML5 -->
+
+<html lang="zh">
+<!-- 设置网页语言为中文 -->
+
+<head>
+  <meta charset="UTF-8" />
+  <!-- 设置字符编码为 UTF-8，支持多语言字符 -->
+  <title>Dashboard 示例（含二级菜单）</title>
+  <!-- 设置网页标题，显示在浏览器标签上 -->
+
+  <style>
+    /* 这里定义了网页的样式 */
+
+    body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  background-color: #2c3e50;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;
+}
+
+.sidebar h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.menu-item {
+  padding: 14px 20px;
+  cursor: pointer;
+  border-left: 4px solid transparent;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.menu-item:hover,
+.menu-item.active {
+  background-color: #34495e;
+  border-left: 4px solid #1abc9c;
+}
+
+.submenu {
+  display: none;
+  flex-direction: column;
+  background-color: #3b4b5a;
+}
+
+.submenu .menu-item {
+  padding-left: 40px;
+  font-size: 14px;
+  border-left: none;
+}
+
+.submenu .menu-item:hover {
+  background-color: #4a5a6a;
+}
+
+.submenu.open {
+  display: flex;
+}
+
+.content {
+  flex-grow: 1;
+  padding: 30px;
+  background-color: #ecf0f1;
+  overflow-y: hidden; /* Prevent scrolling on the content */
+  display: flex;
+  justify-content: center; /* Center the content horizontally */
+  align-items: center; /* Center the content vertically */
+}
+
+.card {
+  background: white;
+  padding: 30px;
+  margin: 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Make sure the chart container takes up all available space */
+#main {
+  width: 100%;
+  height: 100%;
+}
+
+
+
+
+
+  </style>
+</head>
+
+<body>
+  <!-- 页面主体内容
+  你可以在 sidebar 中加入新的菜单项和子菜单项。假设我们要添加一个 动物 类别的菜单，点击后展开子菜单，并加载 cat.html 内容。
+  还需要在js添加页面内容
+  -->
+
+  <div class="sidebar">
+    <!-- 侧边栏 -->
+
+    <h2>用户可视化界面</h2>
+    <!-- 侧边栏标题 -->
+
+    <div class="menu-item" onclick="toggleSubMenu('TimeSeries')">时间序列分析 ▸</div>
+    <!-- 主菜单项，点击后会展开子菜单 -->
+    <div class="submenu" id="TimeSeries">
+      <div class="menu-item" onclick="loadContent(event, 'conversionChart')">浏览转化率</div>
+      <!-- 浏览转化率子菜单项 -->
+     <div class="menu-item" onclick="loadContent(event, 'TimeSeriesAnalysis')">数据一览</div>
+      <!-- 时间序列分析图表子菜单项 -->
+    </div>
+
+    <div class="menu-item" onclick="toggleSubMenu( 'BehavioralPath')">用户行为路径分析 ▸</div>
+      <div class="submenu" id="BehavioralPath">
+      <div class="menu-item" onclick="loadContent(event, 'pathConversion')">桑基图</div>
+          <div class="menu-item" onclick="loadContent(event, 'behaviorPie')">饼图</div>
+      </div>
+
+<div class="menu-item" onclick="toggleSubMenu( 'RFM')">rfm分析 ▸</div>
+      <div class="submenu" id="RFM">
+      <div class="menu-item" onclick="loadContent(event, 'rfm')">散点图</div>
+      </div>
+
+
+  </div>
+
+  <div class="content" id="contentArea">
+    <!-- 内容区，默认显示概览内容 -->
+  </div>
+
+  <script>
+    const contentMap = {
+      overview: `
+        <div class="card">
+          <h3>概览</h3>
+          <p>欢迎使用仪表板。这是概览页面。</p>
+        </div>
+      `,
+      rfm: `
+         <div class="card">
+      <iframe src="/manage/rfm.html" style="width:100%;height:500px;border:none;"></iframe>
+    </div>`,
+
+     conversionChart: `
+    <div class="card">
+      <iframe src="/manage/conversionChart.html" style="width:100%;height:500px;border:none;"></iframe>
+    </div>`,
+    TimeSeriesAnalysis: `
+    <div class="card">
+      <iframe src="/manage/TimeSeriesAnalysis.html" style="width:100%;height:500px;border:none;"></iframe>
+    </div>`,
+        pathConversion: `
+    <div class="card">
+      <iframe src="/manage/pathConversion.html" style="width:100%;height:500px;border:none;"></iframe>
+    </div>`,
+        behaviorPie: `
+    <div class="card">
+      <iframe src="/manage/behaviorPie.html" style="width:100%;height:500px;border:none;"></iframe>
+    </div>`
+    };
+
+    function toggleSubMenu(id) {
+      const submenu = document.getElementById(id);
+      const allSubmenus = document.querySelectorAll('.submenu');
+      allSubmenus.forEach(menu => {
+        if (menu !== submenu) {
+          menu.classList.remove('open');
+        }
+      });
+      submenu.classList.toggle('open');
+    }
+
+    function loadContent(event, key) {
+     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+
+  const contentArea = document.getElementById('contentArea');
+
+  // 如果是内嵌内容，用 contentMap
+  if (contentMap[key]) {
+    contentArea.innerHTML = contentMap[key];
+  } else {
+    // 否则尝试加载 HTML 文件，例如 /manage/cat.html
+    fetch(`/manage/${key}.html`)
+      .then(response => {
+        if (!response.ok) throw new Error(`无法加载 ${key}.html`);
+        return response.text();
+      })
+      .then(html => {
+        contentArea.innerHTML = html;
+      })
+      .catch(error => {
+        contentArea.innerHTML = `<div class="card"><p>加载失败：${error.message}</p></div>`;
+      });
+  }
+    }
+
+    // 默认加载概览
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.menu-item')[0].classList.add('active');
+    loadContent({ target: document.querySelectorAll('.menu-item')[0] }, 'conversionChart');
+
+      document.getElementById('contentArea').innerHTML = contentMap['overview'];
+    });
+  </script>
+
+</body>
+</html>

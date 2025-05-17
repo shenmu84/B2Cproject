@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>最新一天每小时转化率分析</title>
+ <script src="/manage/echarts.min.js"></script>
+
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    #container {
+      display: flex;
+    }
+    #main {
+      width: 75%;
+      height: 600px;
+    }
+    #suggestion-box {
+      width: 25%;
+      padding: 20px;
+      border-left: 1px solid #ccc;
+      background: #f9f9f9;
+    }
+    .tip {
+      margin-bottom: 20px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .low { background-color: #fff3cd; color: #856404; }
+    .high { background-color: #d4edda; color: #155724; }
+    table {
+  border-collapse: collapse; /* 合并边框 */
+  width: auto;                /* 表格宽度根据内容自动 */
+  margin: 0 auto;             /* 居中显示（可选） */
+  max-width: 80%;            /* 最大宽度不超过容器 */
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px 12px;          /* 单元格内边距 */
+  text-align: left;
+}
+
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">最新一天每小时的用户转化率分析  buy/pv & (cart+fav)/pv</h2>
+  <div id="container">
+    <div id="main"></div>
+    <div id="suggestion-box">
+      <h3>转化率建议</h3>
+      <div id="buyTip" class="tip"></div>
+      <div id="cartTip" class="tip"></div>
+    </div>
+  </div>
+
+  <script>
+    fetch('/get_latest_conversion')
+      .then(response => response.json())
+      .then(data => {
+        const chart = echarts.init(document.getElementById('main'));
+
+        const option = {
+          title: { text: `日期：${data.date}` },
+          tooltip: {
+            trigger: 'axis',
+            formatter: function (params) {
+              return params[0].axisValue + '<br/>' +
+                     params.map(p => `${p.marker} ${p.seriesName}: ${p.data}%`).join('<br/>');
+            }
+          },
+          legend: {
+            data: ['buy/pv', 'cart+fav/pv']
+          },
+          xAxis: {
+            type: 'category',
+            data: data.hours
+          },
+          yAxis: {
+            type: 'value',
+            name: '转化率（%）',
+            min: 0,
+            max: 80
+          },
+          series: [
+            {
+              name: 'buy/pv',
+              type: 'line',
+              smooth: true,
+              data: data.buyConversion
+            },
+            {
+              name: 'cart+fav/pv',
+              type: 'line',
+              smooth: true,
+              data: data.cartFavConversion
+            }
+          ]
+        };
+
+        chart.setOption(option);
+
+        // ==== 生成提示建议 ====
+        const avgBuy = avg(data.buyConversion);
+        const avgCartFav = avg(data.cartFavConversion);
+
+        const buyTip = document.getElementById('buyTip');
+        const cartTip = document.getElementById('cartTip');
+
+        if (avgBuy < 5) {
+          buyTip.className = 'tip low';
+          buyTip.innerText = `购买转化率较低（${avgBuy.toFixed(2)}%），建议考虑价格促销或优化购买流程。`;
+        } else {
+          buyTip.className = 'tip high';
+          buyTip.innerText = `购买转化率良好（${avgBuy.toFixed(2)}%），请继续保持。`;
+        }
+
+        if (avgCartFav < 10) {
+          cartTip.className = 'tip low';
+          cartTip.innerText = `加购和收藏转化率偏低（${avgCartFav.toFixed(2)}%），建议优化商品吸引力或增加优惠策略。`;
+        } else {
+          cartTip.className = 'tip high';
+          cartTip.innerText = `加购和收藏转化率表现良好（${avgCartFav.toFixed(2)}%），继续保持！`;
+        }
+
+        function avg(arr) {
+          const valid = arr.filter(v => v !== null && !isNaN(v));
+          return valid.reduce((a, b) => a + b, 0) / valid.length;
+        }
+      });
+  </script>
+</body>
+</html>
