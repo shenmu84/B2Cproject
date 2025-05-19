@@ -27,38 +27,8 @@ def getJsonData():
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, lit
 from pyspark.sql.types import IntegerType
-#商品画像
-def create_item_profile(df):
-    import pandas as pd
 
-    # 这里只保留 asin 不为空的记录
-    items =  df.filter(col("asin").isNotNull())
-    #只保留 asin, style, summary 三列
-    items = items[['asin', 'style', 'summary']]
-
-    # 拼接 style 和 summary 作为商品描述
-    items['desc'] = items.withColumn(
-    "desc",
-    concat_ws(" ", coalesce(items["style"], lit("")), coalesce(items["summary"], lit("")))
-)
-    # 最终只保留 asin 和 desc
-    items = items[['asin', 'desc']]
-    items = items.drop_duplicates(subset=['asin'])
-
-    items = items.sort_values('asin').reset_index(drop=True)
-        #用 sklearn 的 TfidfVectorizer 提取文本特征，生成商品画像
-    from sklearn.feature_extraction.text import TfidfVectorizer
-
-    v = TfidfVectorizer(stop_words="english", max_features=100, ngram_range=(1,3), sublinear_tf=True)
-
-    x = v.fit_transform(items['desc'])
-    #item_profile 是每个商品对应的 tf-idf 特征向量
-    #（矩阵行数=商品数量，列数=特征数量）
-    item_profile = x.todense()  # 得到稠密矩阵形式的商品画像特征
-    print("商品数量:", items.shape[0])
-    print("画像矩阵维度:", item_profile.shape)
-    return item_profile
-#生成用户画像
+#生成用户-商品评分矩阵
 def create_user_item_matrix(df):
     #  选择用户ID和商品ID两列
     user_item_df = df.select("reviewerID", "asin").distinct()
@@ -81,6 +51,76 @@ def create_user_item_matrix(df):
 
     #返回用户-商品评分长格式表，包含数值索引和rating列
     return user_item_df.select("userIndex", "itemIndex", "rating")
+#创建用户画像
+def create_user_profile(df,user_item_matrix,item_profile):
+    #  把 Spark DataFrame 转成 pandas，再转 numpy 矩阵
+    user_item_pd = user_item_matrix.toPandas().fillna(0).set_index('reviewerID')  # 以 reviewerID 为索引
+    ratmat = user_item_pd.values  # numpy ndarray
+
+    # 计算用户画像（user_profile）
+    #    先点乘，再做归一化（L2范数）
+    user_profile = dot(ratmat, item_profile) / (
+                linalg.norm(ratmat, axis=1)[:, None] * linalg.norm(item_profile, axis=0)[None, :])
+
+    # 处理归一化分母可能为0的情况
+    user_profile = np.nan_to_num(user_profile)
+    #  返回用户画像矩阵
+    print("用户画像矩阵 shape:", user_profile.shape)
+    return user_profile
+#创建商品画像
+def create_item_profile(df):
+    # 只保留 asin 不为空的记录，选取需要的列
+    items = df.filter(col("asin").isNotNull()).select("asin", "style", "summary")
+
+    # style 结构体字段名，带冒号的字段名用反引号括起来
+    fields = ["Color:", "Design:", "Flavor:", "Scent Name:", "Size:", "Style Name:"]
+
+    # 处理 style 中字段，防止null
+    style_fields = [coalesce(col(f"style.{field}"), lit('')) for field in fields]
+
+    # 拼接 style 字段字符串
+    style_str = concat_ws(" ", *style_fields)
+
+    # 处理 summary 空值
+    summary_str = coalesce(col("summary"), lit(''))
+
+    # 新增 desc 列，拼接 style + summary
+    items = items.withColumn("desc", concat_ws(" ", style_str, summary_str))
+
+    # 去重和排序
+    items = items.dropDuplicates(["asin"]).orderBy("asin")
+
+    # 转成 Pandas DataFrame 用于 sklearn 处理
+    items_pd = items.select("asin", "desc").toPandas()
+    #sklearn 的 TfidfVectorizer 只能在本地运行，且要求数据是 Pandas 或类似结构，不能直接用 Spark DataFrame。
+    # sklearn TfidfVectorizer 提取文本特征
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    v = TfidfVectorizer(stop_words="english", max_features=100, ngram_range=(1, 3), sublinear_tf=True)
+    x = v.fit_transform(items_pd['desc'])
+
+    item_profile = x.todense()
+    # 测试
+    # print("商品数量:", items_pd.shape[0])
+    # print("画像矩阵维度:", item_profile.shape)
+    return item_profile
+def recom(df,user_profile, item_profile):
+        #计算用户画像与商品画像之间的余弦相似度
+        #用 user_profile（U × F） 与 item_profile.T（F × I）相乘得到一个用户对所有商品的评分预测矩阵（U × I）：
+        # item_profile 是 (I × F)，转置后为 (F × I)
+        sim_matrix = dot(user_profile, item_profile.T)  # 得到 (U × I) 预测矩阵
+
+        # 如果数据稀疏且大，避免直接计算所有用户-商品对的评分也可以采用分批计算
+        sim_matrix = np.nan_to_num(sim_matrix)
+        print("相似度矩阵 shape:", sim_matrix.shape)
+        #Top-K 推荐（每位用户只推荐前 K 个商品）
+        binary_pred = np.zeros_like(sim_matrix)
+        for i in range(sim_matrix.shape[0]):
+            top_k_idx = np.argsort(sim_matrix[i])[-k:]  # 取分数最高的 k 个商品索引
+            binary_pred[i, top_k_idx] = 1
+        return binary_pred
+
+
 def PersonalizedRecom(request):
     #获取目录，循环输出文件名
     dir="hdfs:///amazon/"
@@ -96,7 +136,7 @@ def PersonalizedRecom(request):
     
     #生成商品画像
     item_profile = create_item_profile(df)
-
+#TODO 没检察
     #用 ALS 模型生成推荐结果
     #   1. 生成推荐引擎模型。
     #   2. 推荐排名前 N 的推荐
