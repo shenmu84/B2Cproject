@@ -123,7 +123,7 @@ var vm = new Vue({
                     this.cat2.name = response.data.breadcrumb.cat2;
                     this.cat3.name = response.data.breadcrumb.cat3;
                     for(var i=0; i<this.skus.length; i++){
-                        this.skus[i].url = '/goods/' + this.skus[i].id + ".html";
+                        this.skus[i].url = '/manage/goods/' + this.skus[i].id + ".html";
                     }
                 })
                 .catch(error => {

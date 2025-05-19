@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="meiduo_mail@localhost" uuid="bc9c7e12-a64c-4d26-a978-1e5187aeabce">
-      <driver-ref>mysql.8</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mysql://localhost:3306/meiduo_mail</jdbc-url>
-      <working-dir>$ProjectFileDir$</working-dir>
-    </data-source>
-    <data-source source="LOCAL" name="meiduo_mail@localhost [2]" uuid="6ec71b12-a88b-4620-9d0d-7eabc09166e0">
+    <data-source source="LOCAL" name="meiduo_mail@localhost" uuid="4404e041-8905-4d71-b257-66ff98fdef95">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>

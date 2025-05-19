@@ -32,23 +32,23 @@ var vm = new Vue({
         console.log('获取到的code:', code); // 添加日志
         
         axios.get(this.host + '/oauth_callback/?code=' + code, {
-            responseType: 'json',
+                responseType: 'json',
             withCredentials: true,
             crossDomain: true
-        })
-        .then(response => {
-            console.log('后端响应数据:', response.data); // 添加日志
+            })
+            .then(response => {
+                console.log('后端响应数据:', response.data); // 添加日志
             if (response.data.code == 0) {
-                // 用户已绑定
-                var state = this.get_query_string('state');
-                location.href = '/manage/';
-            } else {
-                // 用户未绑定
-                this.access_token = response.data.access_token;
-                this.is_show_waiting = false;
-            }
-        })
-        .catch(error => {
+                    // 用户已绑定
+                    var state = this.get_query_string('state');
+                    location.href = '/manage/';
+                } else {
+                    // 用户未绑定
+                    this.access_token = response.data.access_token;
+                    this.is_show_waiting = false;
+                }
+            })
+            .catch(error => {
             console.log('错误详情:', error);
             if (error.response) {
                 console.log('错误响应:', error.response.data);

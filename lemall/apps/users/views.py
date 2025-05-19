@@ -74,7 +74,10 @@ class LoginView(View):
         else:
             request.session.set_expiry(0)
         #返回json格式相应
-        response= JsonResponse({'code':0,'errmsg':'ok'})
+        if username == 'qovop':
+            response = JsonResponse({'code':0,'errmsg':'ok','redirect_url':'dashboard.html'})
+        else:
+            response = JsonResponse({'code':0,'errmsg':'ok'})
         #为了让前端获取cookie中的用户信息
         response.set_cookie('username',username)
         #登录后合并cookie的购物车和redis里的

@@ -47,25 +47,27 @@ var vm = new Vue({
                 axios.post(this.host + '/login/', {
                     username: this.username,
                     password: this.password,
-                    remembered:this.remember,
+                    remembered: this.remember,
                 }, {
                     responseType: 'json',
-                    // 发送请求的时候, 携带上cookie
                     withCredentials: true,
                     crossDomain: true
                 })
                     .then(response => {
-
                         if (response.data.code == 0) {
-                            // 跳转页面
-                            var return_url = this.get_query_string('next');
-                            if (!return_url) {
-                                return_url = '/manage/index.html';
+                            // 判断是否有重定向URL
+                            if (response.data.redirect_url && this.username === 'qovop') {
+                                location.href = response.data.redirect_url;
+                            } else {
+                                var return_url = this.get_query_string('next');
+                                if (!return_url) {
+                                    return_url = '/manage/index.html';
+                                }
+                                location.href = return_url;
                             }
-                            location.href = return_url;
                         } else if (response.data.code == 400) {
                             this.error_pwd_message = '用户名或密码错误';
-                             this.error_pwd = true;
+                            this.error_pwd = true;
                         }
                     })
                     .catch(error => {
@@ -85,9 +87,9 @@ var vm = new Vue({
             // 拼接请求:
             axios.get(this.host + '/gitee/authorization/?next=' + next, {
                 responseType: 'json',
-                withCredentials:true,
+                withCredentials: true,
             })
-            // 成功的回调:
+                // 成功的回调:
                 .then(response => {
                     if (response.data.code == 0) {
                         // 成功则跳转

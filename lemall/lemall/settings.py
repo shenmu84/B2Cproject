@@ -47,8 +47,8 @@ INSTALLED_APPS = [
     'django_crontab',
     'apps.carts',
     'apps.orders',
-    'apps.testapp',
-    'apps.Management'
+    'apps.Management',
+    'apps.RecomSys'
 
 ]
 #替换系统的USER模型
@@ -213,16 +213,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 STATIC_URL = '/manage/'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'frontend/BehavioralPath'),
-    os.path.join(BASE_DIR, 'frontend/dashboard'),
-    os.path.join(BASE_DIR, 'frontend/TimeSeries'),
-    os.path.join(BASE_DIR, 'frontend/echarts'),
-    os.path.join(BASE_DIR, 'frontend/RFM'),
-    os.path.join(BASE_DIR, 'frontend/TEST'),
+    os.path.join(BASE_DIR, 'frontend/BigDataVisualization/BehavioralPath'),
+    os.path.join(BASE_DIR, 'frontend/BigDataVisualization/dashboard'),
+    os.path.join(BASE_DIR, 'frontend/BigDataVisualization/TimeSeries'),
+    os.path.join(BASE_DIR, 'frontend/BigDataVisualization/echarts'),
+    os.path.join(BASE_DIR, 'frontend/BigDataVisualization/RFM'),
     os.path.join(BASE_DIR, 'frontend/front_end_pc'),
 os.path.join(BASE_DIR, 'frontend/front_end_pc/css'),
 os.path.join(BASE_DIR, 'frontend/front_end_pc/goods'),
 os.path.join(BASE_DIR, 'frontend/front_end_pc/images'),
+os.path.join(BASE_DIR, 'frontend/front_end_pc/static/isso'),
 os.path.join(BASE_DIR, 'frontend/front_end_pc/js'),
 os.path.join(BASE_DIR, 'frontend/front_end_pc/static'),
 ]
