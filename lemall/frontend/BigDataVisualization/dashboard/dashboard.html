@@ -95,6 +95,25 @@
   height: 100%;
 }
 
+.home-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: #1abc9c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.home-button:hover {
+  background-color: #16a085;
+}
+
 
 
 
@@ -140,6 +159,8 @@
   <div class="content" id="contentArea">
     <!-- 内容区，默认显示概览内容 -->
   </div>
+
+  <a href="/manage/index.html" class="home-button">返回首页</a>
 
   <script>
     const contentMap = {
@@ -211,9 +232,7 @@
     // 默认加载概览
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.menu-item')[0].classList.add('active');
-    loadContent({ target: document.querySelectorAll('.menu-item')[0] }, 'conversionChart');
-
-      document.getElementById('contentArea').innerHTML = contentMap['overview'];
+      loadContent({ target: document.querySelectorAll('.menu-item')[0] }, 'conversionChart');
     });
   </script>
 
