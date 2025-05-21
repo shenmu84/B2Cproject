@@ -25,7 +25,7 @@ SECRET_KEY = 'nu@rt+zf*-g)iuc#rqf!&o**r^l@l-1ml0gt^nrh6)+o&zc4@$'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['www.lemall.site','127.0.0.1','192.168.106.82']
+ALLOWED_HOSTS = ['localhost','www.lemall.site','127.0.0.1','192.168.106.82']
 
 # Application definition
 
@@ -59,7 +59,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://localhost:8000',
     'http://www.lemall.site:8000',
-    'http://192.168.106.82:8000',
+    'http://192.168.92.82:8000',
 ]
 CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
 
@@ -109,7 +109,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST':'127.0.0.1',
-        'PORT':'3306',
+    'PORT':'3306',
         'USER':'root',
         'PASSWORD':'root',
         'NAME': 'meiduo_mail',
@@ -296,7 +296,7 @@ FDFS_BASE_URL = 'http://image.lemall.site:8888/'
 HAYSTACK_CONNECTIONS = {
     'default': {
         'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
-        'URL': 'http://192.168.106.82:9200/',
+        'URL': 'http://192.168.92.82:9200/',
         'INDEX_NAME': 'meiduo',
     },
 }

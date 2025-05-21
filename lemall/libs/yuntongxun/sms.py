@@ -20,28 +20,6 @@ _serverPort = "8883"
 # 说明：REST API版本号保持不变
 _softVersion = '2013-12-26'
 
-# 云通讯官方提供的发送短信代码实例
-# # 发送模板短信
-# # @param to 手机号码
-# # @param datas 内容数据 格式为数组 例如：{'12','34'}，如不需替换请填 ''
-# # @param $tempId 模板Id
-#
-# def sendTemplateSMS(to, datas, tempId):
-#     # 初始化REST SDK
-#     rest = REST(serverIP, serverPort, softVersion)
-#     rest.setAccount(accountSid, accountToken)
-#     rest.setAppId(appId)
-#
-#     result = rest.sendTemplateSMS(to, datas, tempId)
-#     for k, v in result.iteritems():
-#
-#         if k == 'templateSMS':
-#             for k, s in v.iteritems():
-#                 print '%s:%s' % (k, s)
-#         else:
-#             print '%s:%s' % (k, v)
-
-
 class CCP(object):
     """发送短信的辅助类"""
 

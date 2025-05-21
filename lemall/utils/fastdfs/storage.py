@@ -9,4 +9,4 @@ class MyStorage(Storage):
         pass
 
     def url(self, name):
-        return "http://192.168.106.82:8888/"+name
+        return "http://192.168.92.82:8888/"+name

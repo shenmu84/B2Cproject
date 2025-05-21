@@ -40,9 +40,9 @@ def  post_json(request):
     use=User.objects.create_user(username=username,password=password,mobile=mobile)
     # 状态保持
     from django.contrib.auth import login
-
     login(request, use)
     return JsonResponse({'code':0,'errmsg':'ok'})
+
 class MobileCountView(View):
     def get(self,request,mobile):
         count = User.objects.filter(mobile=mobile).count()
@@ -252,7 +252,6 @@ from apps.goods.models import SKU
 class UserHistoryView(LoginRequiredJSONMixin, View):
     def post(self, request):
         user = request.user
-
         # 1. 接收请求
         data = json.loads(request.body.decode())
         # 2. 获取请求参数

@@ -80,7 +80,7 @@ var vm = new Vue({
                     })
             }
         },
-        // 用户点击 QQ第三方登录按钮之后, 触发该方法:
+        // 用户点击 第三方登录按钮之后, 触发该方法:
         gitee_login: function () {
             // 获取参数
             var next = this.get_query_string('next') || '/';

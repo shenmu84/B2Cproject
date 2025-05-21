@@ -12,8 +12,6 @@ from apps.goods.models import SKU
 检验数据是否存在
 登录的获取id放到redis
 未登录放cookie里
-
-
 '''
 from utils.carts import *
 class CartsView(View):
