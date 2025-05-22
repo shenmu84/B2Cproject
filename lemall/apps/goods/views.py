@@ -1,6 +1,7 @@
 import os
 from unicodedata import category
 
+from django.contrib.auth import login
 from django.http import JsonResponse
 from django.shortcuts import render
 
@@ -42,6 +43,8 @@ from apps.goods.models import SKU
 class ListView(View):
     def get(self, request,category_id):
         # 1.接收参数
+        user=request.user
+        login(request, user)
         # 排序字段
         ordering = request.GET.get('ordering')
         # 每页多少条数据
@@ -69,8 +72,10 @@ class ListView(View):
             }
             )
         total_num=paginator.num_pages
-        return JsonResponse({'code': 0, 'errmsg': 'ok', 'list': sku_list, 'count': total_num, 'breadcrumb': breadcrumbs})
-
+        response = JsonResponse(
+            {'code': 0, 'errmsg': 'ok', 'list': sku_list, 'count': total_num, 'breadcrumb': breadcrumbs})
+        response.set_cookie('username', user.username)
+        return response
 class HotView(View):
     def get(self,request,category_id):
         try:

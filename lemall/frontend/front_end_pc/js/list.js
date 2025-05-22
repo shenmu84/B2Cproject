@@ -114,9 +114,10 @@ var vm = new Vue({
                     },
                     responseType: 'json',
                     withCredentials:true
-
+                    
                 })
                 .then(response => {
+                    
                     this.count = response.data.count;
                     this.skus = response.data.list;
                     // 面包屑效果需要用的数据:

@@ -25,7 +25,9 @@ var vm = new Vue({
             3: 'stars_three',
             4: 'stars_four',
             5: 'stars_five',
-        }
+        },
+        hot_skus:[],
+        carts:[]
     },
     computed: {
         sku_amount: function(){
@@ -33,6 +35,7 @@ var vm = new Vue({
         }
     },
     mounted: function(){
+        this.username = getCookie('username');
         // 添加用户浏览历史记录
         this.get_sku_id();
 
@@ -98,7 +101,7 @@ var vm = new Vue({
         },
         // 从路径中提取sku_id
         get_sku_id: function(){
-            var re = /^\/goods\/(\d+).html$/;
+            var re = /^\/manage\/goods\/(\d+).html$/;
             this.sku_id = document.location.pathname.match(re)[1];
         },
         // 减小数值
