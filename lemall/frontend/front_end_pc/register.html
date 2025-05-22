@@ -8,6 +8,47 @@
     <script type="text/javascript" src="js/host.js"></script>
     <script type="text/javascript" src="js/vue-2.5.16.js"></script>
     <script type="text/javascript" src="js/axios-0.18.0.min.js"></script>
+    <style>
+        body {
+            background-image: url('/manage/images/jiadian.gif');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin: 0;
+            padding: 0;
+        }
+        .r_con.fr {
+        background-color: rgba(255, 255, 255, 0.95); /* 白色背景，稍透明 */
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        width: 25%;
+        position: absolute;
+        top: 10%;
+        left: 10%;
+        z-index:1010;
+        padding-bottom: 30px;           /* 保底部空间 */
+        
+    }
+    .footer.no-mp {
+        position: absolute;  /* 相对于包含块定位 */
+    top: auto;          /* 不用top */
+    bottom: 0;          /* 放在包含块底部 */
+    bottom: 0;            /* 紧贴屏幕底部 */
+    left: 0;
+    width: 100%;          /* 宽度铺满屏幕 */
+    padding: 20px;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1); /* 阴影更分层 */
+    z-index: 1000;        /* 确保它在最上层 */
+    position:absolute;
+}
+
+
+
+    </style>
+    
+
+    
 </head>
 <body>
     <div class="register_con">

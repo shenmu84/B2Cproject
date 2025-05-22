@@ -5,19 +5,19 @@
     <title>商城-商品详情</title>
     <link rel="stylesheet" type="text/css" href="/manage/css/reset.css">
     <link rel="stylesheet" type="text/css" href="/manage/css/main.css">
-    <!-- 添加Isso样式 -->
-    <link rel="stylesheet" href="/manage/isso/css/isso.css">
     <script type="text/javascript" src="/manage/js/host.js"></script>
     <script type="text/javascript" src="/manage/js/vue-2.5.16.js"></script>
     <script type="text/javascript" src="/manage/js/axios-0.18.0.min.js"></script>
-    <!-- 添加Isso脚本 -->
-    <script data-isso="/isso/" src="/manage/isso/js/embed.min.js"></script>
+ <style>
+    [v-cloak] { display: none; }
+  </style>
 </head>
 <body>
+    
     <div id="app" v-cloak>
     <div class="header_con">
         <div class="header">
-            <div class="welcome fl">欢迎来到商城!</div>
+            <div class="welcome fl">欢迎来到乐购商城!</div>
             <div class="fr">
                 <div v-if="username" class="login_btn fl">
                     欢迎您：<em>[[ username ]]</em>
@@ -1837,48 +1837,9 @@
         </div>
     </div>
     <div class="tab_content">
-        <!-- 评论区容器 -->
-        <div id="isso-thread"></div>
-    </div>
 
-    <script>
-        // 在Vue实例创建后初始化Isso
-        var vm = new Vue({
-            // ... 现有的Vue配置 ...
-            mounted: function() {
-                // 如果用户已登录，设置Isso的默认作者
-                if (this.username) {
-                    window.isso.config.author = {
-                        name: this.username
-                    };
-                }
-            }
-        });
 
-        // 监听Isso评论框出现事件
-        document.addEventListener('DOMContentLoaded', function() {
-            var observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes) {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.classList && node.classList.contains('isso-input-wrapper')) {
-                                var authorInput = node.querySelector('.isso-input-name');
-                                if (authorInput && vm.username) {
-                                    authorInput.value = vm.username;
-                                    authorInput.readOnly = true;
-                                }
-                            }
-                        });
-                    }
-                });
-            });
-
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        });
-    </script>
+   
     </div>
     <script type="text/javascript">
         var price = 3788.00;
@@ -1886,29 +1847,6 @@
     </script>
     <script type="text/javascript" src="/manage/js/common.js"></script>
     <script type="text/javascript" src="/manage/js/detail.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes) {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.classList && node.classList.contains('isso-input-wrapper')) {
-                                var authorInput = node.querySelector('.isso-input-name');
-                                if (authorInput && vm.username) {
-                                    authorInput.value = vm.username;
-                                    authorInput.readOnly = true;
-                                }
-                            }
-                        });
-                    }
-                });
-            });
-    
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        });
-        </script>
+
 </body>
 </html>

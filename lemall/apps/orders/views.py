@@ -121,7 +121,7 @@ class OrderCommitView(LoginRequiredMixin, View):
             for id,count in carts.items():
                 sku=SKU.objects.get(pk=id)
                 if sku.stock < count:
-                    transaction.savepoint_rollback(user.id)
+                    transaction.savepoint_rollback(point)
                     return JsonResponse({'code':400,'errmsg':'库存不足'})
                 #库存减少，销量增加
                 sku.stock  -=count

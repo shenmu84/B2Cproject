@@ -64,7 +64,7 @@ var vm = new Vue({
         }
     },
     mounted: function(){
-
+        
         // 获取cookie中的用户名
     	this.username = getCookie('username');
 
@@ -114,6 +114,7 @@ var vm = new Vue({
                     },
                     responseType: 'json',
                     withCredentials:true
+
                 })
                 .then(response => {
                     this.count = response.data.count;

@@ -25,7 +25,7 @@ SECRET_KEY = 'nu@rt+zf*-g)iuc#rqf!&o**r^l@l-1ml0gt^nrh6)+o&zc4@$'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','www.lemall.site','127.0.0.1','192.168.106.82']
+ALLOWED_HOSTS = ['localhost','www.lemall.site','127.0.0.1','192.168.92.82']
 
 # Application definition
 
