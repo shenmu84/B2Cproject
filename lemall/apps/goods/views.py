@@ -29,8 +29,6 @@ class IndexView(View):
         content_categories = ContentCategory.objects.all()
         for cat in content_categories:
             contents[cat.key] = cat.content_set.filter(status=True).order_by('sequence')
-
-
         # 我们把数据 传递 给 模板
         context = {
             'categories': categories,

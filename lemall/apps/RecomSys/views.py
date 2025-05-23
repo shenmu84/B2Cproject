@@ -1,173 +1,122 @@
 from django.http import JsonResponse
-from pyspark.sql.functions import col
-import json
-import pandas as pd
-from pyspark.sql import functions as F
-from pyspark.sql.functions import lit, col, when
-from numpy import dot, linalg
-import numpy as np
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lit
-from pyspark.sql.types import IntegerType
 from apps.RecomSys.spark_utils import get_spark_session
-#fileName="hdfs:///amazon/AMAZON_FASHION_5.json.gz"
-fileName="hdfs:///amazon/Kindle_Store_5.json.gz"
 '''
-css复制编辑[ HDFS 上的 JSON.GZ 文件 ]
-        ↓（PySpark 读取）
-[ Spark ALS 模型训练与推荐 ]
-        ↓
-[ Django 后端 API ]
-        ↓
-[ 前端页面展示推荐内容 ]
+原始数据 → 清洗 → 用户/商品映射 → ALS建模 → 训练 → 预测 → RMSE评估
+
+训练好的模型
+    ↓
+model.recommendForAllUsers(N)  ➜  获取每个用户的 Top-N 推荐列表
+    ↓
+可选：用映射表还原为原始用户 ID 和商品 ID
+
 '''
 
-#读取 HDFS 上 gzip 的 JSON 文件
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, dense_rank,explode
+from pyspark.sql.window import Window
+from pyspark.ml.recommendation import ALS
+from pyspark.ml.evaluation import RegressionEvaluator
+# 调用你的推荐流程
 def getJsonData():
     spark = get_spark_session()
-
-    # 直接读取 gzip 压缩文件
-    df = spark.read.json(fileName)
-
-    #显示前十行数据
-   # df.show(10, truncate=False)
+    df = spark.read.json("hdfs:///amazon/output/cleaned_reviews.json.gz")
     return df
 
 
-#PySpark构建稠密用户-商品二值矩阵代码（行用户，列商品,0/1有无购买)
-from pyspark.sql.functions import col, when, lower, lit
-from functools import reduce
+#已经测试成功了，这个生成的推荐结果是
+'''
+{"recommendations": [{"asin": "B009SZFHP6",
+ "title": "\u63a8\u8350\u5546\u54c1 FHP6", 
+"image": "https://images-na.ssl-images-amazon.com/images/P/B009SZFHP6.jpg",
+"url": "https://www.amazon.com/dp/B009SZFHP6"}
+之后有十个}
+'''
+def recommend(request):
+    #id=30
+    userID = request.user.id
 
-def create_user_item_matrix(df):
-    # 1. 过滤出有评分的记录
-    user_item_df = df.select("reviewerID", "asin", "overall", "verified", "reviewText", "vote")
-    # 2. 转换 vote 为数值
-    user_item_df = user_item_df.withColumn("vote", col("vote").cast("int")).fillna(0, ["vote"])
-    # 3. 评论内容中是否包含正向词
-    positive_words = ["great", "excellent", "amazing", "love", "good", "perfect", "awesome"]
-    contains_positive = reduce(lambda acc, word: acc | lower(col("reviewText")).contains(word),
-                               positive_words[1:],
-                               lower(col("reviewText")).contains(positive_words[0]))
-    user_item_df = user_item_df.withColumn("has_positive_words", when(contains_positive, 1.0).otherwise(0.0))
-    # 4. 已验证购买：True -> 1.0，False -> 0.8
-    user_item_df = user_item_df.withColumn(
-        "verified_weight", when(col("verified") == True, 1.0).otherwise(0.8)
+    asin_list=get_recommendations_for_user(userID)
+    data=[]
+    for asin in asin_list[:10]:
+        data.append({
+            'asin': asin,
+            'title': f"推荐商品 {asin[-4:]}",  # 可以从文件或数据库中取标题
+            'image': f"https://images-na.ssl-images-amazon.com/images/P/{asin}.jpg",  # 图片链接格式
+            'url': f"https://www.amazon.com/dp/{asin}",
+        })
+    return JsonResponse({'recommendations': data})
+
+def get_recommendations_for_user(user_id):
+    from pyspark.sql.functions import col
+    df = getJsonData()
+    # 提取有用列并清洗数据
+    ratings = df.select("reviewerID", "asin", "overall") \
+                .dropna() \
+                .filter(col("overall") > 0)
+
+
+    #把 reviewerID 和 asin 映射成了整数型的 userIndex 和 itemIndex：
+    #因为 ALS 模型要求输入是 整数型 的用户 ID 和商品 ID，为了节省内存并提高效率
+    # 创建一个窗口，按照 reviewerID 排序
+    user_window = Window.partitionBy().orderBy("reviewerID")
+    item_window = Window.partitionBy().orderBy("asin")
+    # 通过 dense_rank() 给每个 reviewerID 编一个唯一的整数，从1开始，减1后从0开始
+    ratings = ratings.withColumn("userIndex", dense_rank().over(user_window) - 1)
+    ratings = ratings.withColumn("itemIndex", dense_rank().over(item_window) - 1)
+
+    # 提前保存一个“映射表”，记录 userIndex 和原始 reviewerID 的对应关系，itemIndex 和 asin 的对应关系
+    user_mapping = ratings.select("reviewerID", "userIndex").distinct()
+    item_mapping = ratings.select("asin", "itemIndex").distinct()
+
+    #  构建 ALS 所需格式
+    als_data = ratings.select(
+        col("userIndex").cast("int"),
+        col("itemIndex").cast("int"),
+        col("overall").cast("float")
+    ).cache()
+
+    # 拆分训练与测试数据
+    train_data, test_data = als_data.randomSplit([0.8, 0.2], seed=123)
+
+    # 构建 ALS 模型
+    als = ALS(
+        userCol="userIndex",
+        itemCol="itemIndex",
+        ratingCol="overall",
+        rank=10,
+        maxIter=10,
+        regParam=0.1,
+        coldStartStrategy="drop"
     )
-    # 5. vote 加权（越多人觉得评论有帮助越可信）
-    user_item_df = user_item_df.withColumn("vote_weight", when(col("vote") > 0, 1 + col("vote") / 10).otherwise(1.0))
-    # 6. 综合喜爱程度评分（
-    user_item_df = user_item_df.withColumn(
-        "preference_score",
-        col("overall") * col("verified_weight") * (1 + 0.2 * col("has_positive_words")) * col("vote_weight")
+    #用你提供的训练数据，让 ALS 模型学习“用户-商品”的评分规律，训练出一个可以进行推荐和预测的模型
+    model = als.fit(train_data)
+    # 预测与评估
+    predictions = model.transform(test_data)
+
+    evaluator = RegressionEvaluator(metricName="rmse", labelCol="overall", predictionCol="prediction")
+    rmse = evaluator.evaluate(predictions)
+    #RMSE 是 Root Mean Squared Error（均方根误差） 的缩写，是一种常用来衡量预测值与真实值之间差异的指标
+    print(f"RMSE = {rmse}")
+    #RMSE = 2.123718513970498
+    # 已经训练好的模型: model
+
+    #推荐给指定用户
+    top_n_for_user = model.recommendForUserSubset(
+        als_data.select("userIndex").distinct().filter(col("userIndex") == user_id),
+        10
     )
-    # 7. 最终评分表：只保留有实际交互记录的 user-item 对
-    user_item_matrix = user_item_df.groupBy("reviewerID").pivot("asin").agg(F.first("preference_score"))
 
-    return user_item_matrix
+    # 展开数组
+    recommendation = top_n_for_user.select(
+        col("userIndex"),
+        explode("recommendations").alias("rec")
+    ).select(
+        col("userIndex"),
+        col("rec.itemIndex").alias("itemIndex"),
+        col("rec.rating")
+    )
+    recommendation_with_asin = recommendation.join(item_mapping, on="itemIndex", how="left")
 
-from pyspark.sql.functions import col, coalesce, lit, concat_ws
+    asin_list = [row['asin'] for row in recommendation_with_asin.select("asin").collect()]
+    return asin_list
 
-#创建商品画像
-def create_item_profile(df):
-    # 只保留 asin 不为空的记录，选取需要的列
-    items = df.filter(col("asin").isNotNull()).select("asin", "style", "summary")
-
-    # style 结构体字段名，带冒号的字段名用反引号括起来
-    fields = ["Color:", "Design:", "Flavor:", "Scent Name:", "Size:", "Style Name:"]
-
-    # 处理 style 中字段，防止null
-    style_fields = [coalesce(col(f"style.{field}"), lit('')) for field in fields]
-
-    # 拼接 style 字段字符串
-    style_str = concat_ws(" ", *style_fields)
-
-    # 处理 summary 空值
-    summary_str = coalesce(col("summary"), lit(''))
-
-    # 新增 desc 列，拼接 style + summary
-    items = items.withColumn("desc", concat_ws(" ", style_str, summary_str))
-
-    # 去重和排序
-    items = items.dropDuplicates(["asin"]).orderBy("asin")
-
-    # 转成 Pandas DataFrame 用于 sklearn 处理
-    items_pd = items.select("asin", "desc").toPandas()
-    #sklearn 的 TfidfVectorizer 只能在本地运行，且要求数据是 Pandas 或类似结构，不能直接用 Spark DataFrame。
-    # sklearn TfidfVectorizer 提取文本特征
-    from sklearn.feature_extraction.text import TfidfVectorizer
-
-    v = TfidfVectorizer(stop_words="english", max_features=100, ngram_range=(1, 3), sublinear_tf=True)
-    x = v.fit_transform(items_pd['desc'])
-
-    item_profile = x.todense()
-    # 测试
-    # print("商品数量:", items_pd.shape[0])
-    # print("画像矩阵维度:", item_profile.shape)
-    return item_profile
-
-#创建用户画像
-def create_user_profile(df,user_item_matrix,item_profile):
-    #  把 Spark DataFrame 转成 pandas，再转 numpy 矩阵
-    user_item_pd = user_item_matrix.toPandas().fillna(0).set_index('reviewerID')  # 以 reviewerID 为索引
-    ratmat = user_item_pd.values  # numpy ndarray
-
-    # 计算用户画像（user_profile）
-    #    先点乘，再做归一化（L2范数）
-    user_profile = dot(ratmat, item_profile) / (
-                linalg.norm(ratmat, axis=1)[:, None] * linalg.norm(item_profile, axis=0)[None, :])
-
-    # 处理归一化分母可能为0的情况
-    user_profile = np.nan_to_num(user_profile)
-    #  返回用户画像矩阵
-    print("用户画像矩阵 shape:", user_profile.shape)
-    return user_profile
-
-def recom(df,user_profile, item_profile,k=10):
-        #计算用户画像与商品画像之间的余弦相似度
-        #用 user_profile（U × F） 与 item_profile.T（F × I）相乘得到一个用户对所有商品的评分预测矩阵（U × I）：
-        # item_profile 是 (I × F)，转置后为 (F × I)
-        sim_matrix = dot(user_profile, item_profile.T)  # 得到 (U × I) 预测矩阵
-        # 如果数据稀疏且大，避免直接计算所有用户-商品对的评分也可以采用分批计算
-        sim_matrix = np.nan_to_num(sim_matrix)
-        print("相似度矩阵 shape:", sim_matrix.shape)
-        #Top-K 推荐（每位用户只推荐前 K 个商品）
-        binary_pred = np.zeros_like(sim_matrix)
-        for i in range(sim_matrix.shape[0]):
-            top_k_idx = np.argsort(sim_matrix[i])[-k:]  # 取分数最高的 k 个商品索引
-            binary_pred[i, top_k_idx] = 1
-        return binary_pred
-
-
-def PersonalizedRecom(request):
-    #获取目录，循环输出文件名
-    dir="hdfs:///amazon/"
-
-    #获取文件
-    df=getJsonData()
-    #处理数据
-        #生成用户-商品矩阵
-    user_item_matrix = create_user_item_matrix(df)
-    print("用户商品矩阵")
-    print(type(user_item_matrix))
-    user_item_matrix.show(10)
-    #显示结果
-    #matrix_df.show(10, truncate=False)
-    #结果是userIndex|itemIndex|rating|二维数组
-
-    #生成商品画像
-    item_profile = create_item_profile(df)
-    # print("生成商品画像")
-    # print(pd.DataFrame(item_profile).head(4))
-
-    #生成用户画像
-    user_profile=create_user_profile(df,user_item_matrix,item_profile)
-    print("生成用户画像")
-    print(pd.DataFrame(user_profile).head(10))
-#TODO 没检察
-    #用 ALS 模型生成推荐结果
-    #   1. 生成推荐引擎模型。
-    binary_pred=recom(df,user_profile,item_profile)
-    print(binary_pred.head(10))
-    #   2. 推荐排名前 N 的推荐
-    #推荐结果保存为 JSON/CSV
-    return JsonResponse({'msg':'ok'})
