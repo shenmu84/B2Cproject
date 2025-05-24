@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 import sys
-
-seen = set()
+import json
+prev_key = None
 for line in sys.stdin:
-    try:
-        key, value = line.strip().split("\t", 1)
-        if key not in seen:
-            print(value)         # 输出原始 JSON
-            seen.add(key)        # 标记这个评论已处理
-    except:
+    parts = line.strip().split('\t')
+    if len(parts) != 3:
         continue
+    key = f"{parts[0]}\t{parts[1]}"
+    overall = parts[2]
+    if key != prev_key:
+        asin, reviewerID = parts[0], parts[1]
+        print(json.dumps({
+            "asin": asin,
+            "reviewerID": reviewerID,
+            "overall": float(overall)
+        }))
+        prev_key = key
