@@ -3,14 +3,20 @@ var vm = new Vue({
     delimiters: ['[[', ']]'], // 修改vue模板符号，防止与django冲突
     data: {
         host,
+        carts: [],
         f1_tab: 1, // 1F 标签页控制
         f2_tab: 1, // 2F 标签页控制
         f3_tab: 1, // 3F 标签页控制
         cart_total_count: 0, // 购物车总数量
         carts: [], // 购物车数据,
         username:'',
-        content_category:[]
+        content_category:[],
+        recommendations: [],
+        
     },
+    created() {
+        this.loadRecommendations();
+      },
     mounted(){
         // 获取购物车数据
         // this.get_carts();
@@ -18,10 +24,22 @@ var vm = new Vue({
          // 获取cookie中的用户名
     	this.username = getCookie('username');
 
-
         this.get_cart()
     },
     methods: {
+        loadRecommendations() {
+            axios.get('/recommend/',{ withCredentials:true})
+              .then(response => {
+                this.recommendations = response.data.recommendations;
+                console.log(response.data);
+            })
+            .catch(error => {
+                console.error('获取推荐失败：', error);
+              });
+             
+          },
+          
+        
         // get_category_data:function(){
         //     var url = this.host + '/content_category/';
         //     axios.get(url, {

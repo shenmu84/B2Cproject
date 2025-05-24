@@ -82,7 +82,7 @@
             mounted: function(){
                 axios.put(this.host+'/payment/status/'+document.location.search,{}, {
                         responseType: 'json',
-                        withCredentials:true
+                        Credentials:true
                     })
                     .then(response => {
                         this.trade_id = response.data.trade_id;

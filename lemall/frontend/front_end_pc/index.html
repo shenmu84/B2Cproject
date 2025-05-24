@@ -2527,58 +2527,33 @@
         }
         /*推荐系统*/
           .recommendation-panel {
-  width: 250px;
-  float: left;
-  margin-left: 20px;
-}
-.recommend-list {
-  list-style: none;
-  padding: 0;
-}
-.recommend-list li {
-  margin-bottom: 15px;
-}
-.recommend-list img {
-  width: 200px;
-  height: 200px;
-  object-fit: contain;
-  border-radius: 5px;
-}
-.recommend-list p {
-  text-align: center;
-  font-size: 14px;
-}
+            width: 250px;
+            float: left;
+            margin-left: 20px;
+            }
+            .recommend-list {
+            list-style: none;
+            padding: 0;
+            }
+            .recommend-list li {
+            margin-bottom: 15px;
+            }
+            .recommend-list img {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 5px;
+            }
+            .recommend-list p {
+            text-align: center;
+            font-size: 14px;
+            }
 
 </style>
 <script type="text/javascript" src="/manage/js/slide.js"></script>
 <script type="text/javascript" src="/manage/js/common.js"></script>
-    <script type="text/javascript" src="/manage/js/index.js"></script>
-    <!--推荐系统-->
-<script>
-  var app = new Vue({
-    el: '#app',
-    delimiters: ['[[', ']]'],
-    data: {
-      username: '', // 登录用户名（你可以从后端注入或 API 获取）
-      recommendations: []
-    },
-    created() {
-      this.loadRecommendations();
-    },
-    methods: {
-      loadRecommendations() {
-        axios.get('/recommend/')
-          .then(response => {
-            this.recommendations = response.data.recommendations;
-          });
-      },
-      logoutfunc() {
-        window.location.href = "/logout/";
-      }
-    }
-  });
-</script>
-
+<script type="text/javascript" src="/manage/js/index.js"></script>
+   
 </body>
 </html>
 

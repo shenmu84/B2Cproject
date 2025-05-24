@@ -1,4 +1,5 @@
 import json
+from random import random
 
 from django.http import JsonResponse
 from django_redis import get_redis_connection
@@ -39,6 +40,7 @@ def getJsonData():
 import requests
 from PIL import Image
 from io import BytesIO
+
 #选出有效图片
 def check_image_exists(url):
     try:
@@ -52,8 +54,35 @@ def check_image_exists(url):
         return False
     except Exception:
         return False
-
-
+def get_info_from_asin(asin):
+    redis_cli = get_redis_connection('recommend')
+    redis_key=f"asin:{asin}"
+    #如果有直接拿
+    info_json = redis_cli.get(redis_key)
+    if info_json:
+        info = json.loads(info_json)
+    #没有再向亚马逊拿
+    else:
+        title = get_title_by_asin_selenium(asin)
+        if "推荐商品" in title:
+            # 抓取失败，返回基础信息但不缓存
+            return {
+                'asin': asin,
+                'title': title,
+                'image': f"https://images-na.ssl-images-amazon.com/images/P/{asin}.jpg",
+                'url': f"https://www.amazon.com/dp/{asin}",
+            }
+        else:
+            info={
+                'asin': asin,
+                'title': title,
+                'image': f"https://images-na.ssl-images-amazon.com/images/P/{asin}.jpg",
+                'url': f"https://www.amazon.com/dp/{asin}",
+            }
+            #存入redis
+            # 存入 Redis，设置缓存时间（例如 24 小时）
+            redis_cli.setex(redis_key, 3600*24*14, json.dumps(info))
+    return info
 def recommend(request):
     #id=30
     userID = request.user.id
@@ -66,64 +95,83 @@ def recommend(request):
         asin_list=get_recommendations_for_user(userID)
     data = []
     for asin in asin_list:
-        title = "test"  # 你可以替换成真正的标题逻辑
-        data.append({
-            'asin': asin,
-            'title': title,
-            'image':  f"https://images-na.ssl-images-amazon.com/images/P/{asin}.jpg",
-            'url': f"https://www.amazon.com/dp/{asin}",
-        })
+        #从redis中直接找
+        data.append(get_info_from_asin(asin))
     return JsonResponse({'recommendations': data})
 
 #爬虫爬取标题名字
 import requests
-from bs4 import BeautifulSoup
 from django.http import JsonResponse
 from django_redis import get_redis_connection
 import json
+from selenium import webdriver
+
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
-import random
 
-
-# ---------- 安全爬虫函数 ----------
-def get_title_by_asin(asin):
+def get_title_by_asin_selenium(asin):
     url = f"https://www.amazon.com/dp/{asin}"
-    headers = {
-        "User-Agent": random.choice([
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-        ]),
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate",
-        "Referer": "https://www.amazon.com/",
-        "Connection": "keep-alive",
-    }
+
+    # 配置 Chrome options
+    options = Options()
+
+    # 更真实的 user-agent
+    user_agent = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36")
+    options.add_argument(f'user-agent={user_agent}')
+
+    # 更接近真实用户行为
+    options.add_argument('--start-maximized')
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_argument('--disable-infobars')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--no-sandbox')
+    options.add_experimental_option('excludeSwitches', ['enable-automation'])
+    options.add_experimental_option('useAutomationExtension', False)
+
+    # 重要：禁用自动化特征
+    options.add_argument('--disable-dev-shm-usage')
+    # 指定 chromedriver 路径（如果不在 PATH 中）
+    service = Service("/home/B2Cproject/lemall/apps/RecomSys/chromedriver-linux64")
+
+    import undetected_chromedriver as uc
+    #模拟真实 Headers
+    options = uc.ChromeOptions()
+    options.add_argument(f'user-agent={user_agent}')
+    # 其他参数同上...
+
+    driver = uc.Chrome(options=options)
 
     try:
-        time.sleep(random.uniform(1.5, 3.0))
-        response = requests.get(url, headers=headers, timeout=10)
-        print(f"抓取 {asin} 状态码：{response.status_code}")
-        print(response.text[:500])  # 打印前500字符内容看看是不是有验证码或跳转
+        print(f"访问 {url}")
+        driver.get(url)
 
-        if response.status_code != 200:
+        time.sleep(random.uniform(3, 5))
+
+        # 检查是否遇到验证码
+        if "captcha" in driver.page_source.lower():
+            print("⚠️ 检测到验证码页面，终止抓取")
             return f"推荐商品 {asin[-4:]}"
 
-        soup = BeautifulSoup(response.text, 'html.parser')
-        meta_title = soup.find('meta', attrs={'name': 'title'})
-        if meta_title:
-            return meta_title.get('content', f"推荐商品 {asin[-4:]}")
-
-        title_tag = soup.find('h1', id='title')
-        if title_tag:
-            font_tag = title_tag.find('font')
-            if font_tag:
-                return font_tag.get_text(strip=True)
-            return title_tag.get_text(strip=True)
+        # 获取标题
+        try:
+            title_element = driver.find_element(By.ID, "productTitle")
+            title = title_element.text.strip()
+            return title
+        except NoSuchElementException:
+            print("❌ 未找到商品标题元素")
+            return f"推荐商品 {asin[-4:]}"
+    except TimeoutException:
+        print("请求超时")
         return f"推荐商品 {asin[-4:]}"
     except Exception as e:
-        print(f"抓取 {asin} 标题失败: {e}")
+        print(f"抓取出错：{e}")
         return f"推荐商品 {asin[-4:]}"
+    finally:
+        driver.quit()
 
 
 def get_recommendations_for_user(user_id):
@@ -134,16 +182,9 @@ def get_recommendations_for_user(user_id):
                 .dropna() \
                 .filter(col("overall") > 0).persist(StorageLevel.MEMORY_AND_DISK)
 
-
     #把 reviewerID 和 asin 映射成了整数型的 userIndex 和 itemIndex：
     #因为 ALS 模型要求输入是 整数型 的用户 ID 和商品 ID，为了节省内存并提高效率
     '''StringIndexer是分布式进行的，不会集中在单机处理；相比 Window + dense_rank 全局排序，占用资源少得多。'''
-    # # 创建一个窗口，按照 reviewerID 排序
-    # user_window = Window.partitionBy().orderBy("reviewerID")
-    # item_window = Window.partitionBy().orderBy("asin")
-    # # 通过 dense_rank() 给每个 reviewerID 编一个唯一的整数，从1开始，减1后从0开始
-    # ratings = ratings.withColumn("userIndex", dense_rank().over(user_window) - 1)
-    # ratings = ratings.withColumn("itemIndex", dense_rank().over(item_window) - 1)
 
     from pyspark.ml.feature import StringIndexer
 
@@ -158,7 +199,6 @@ def get_recommendations_for_user(user_id):
     # 先做映射表持久化
     user_mapping = ratings.select("reviewerID", "userIndex").distinct().persist(StorageLevel.MEMORY_AND_DISK)
     item_mapping = ratings.select("asin", "itemIndex").distinct().persist(StorageLevel.MEMORY_AND_DISK)
-
 
     #  构建 ALS 所需格式
     als_data = ratings.select(
@@ -221,6 +261,6 @@ def get_recommendations_for_user(user_id):
     redis_cli = get_redis_connection('recommend')
     redis_key = f"user:{user_id}:recommendations"
     #将 Python 列表序列化成字符串，Redis 只能存字符串
-    redis_cli.setex(redis_key, 60, json.dumps(valid_asins))  # 设置1个星期过期3600*24*7
+    redis_cli.setex(redis_key, 3600*24*14, json.dumps(valid_asins))  # 设置1个星期过期3600*24*7
     return valid_asins
 
